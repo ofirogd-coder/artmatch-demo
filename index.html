@@ -502,7 +502,7 @@ V.filter=()=>`${top()}
 V.taste=()=>{setTimeout(loadTasteImages,0);return `${top()}
  <div class="row" style="justify-content:space-between;margin-top:6px"><h1 style="font-size:24px">ציורים שאהבת</h1><span class="demo-tag" id="tcount">נבחרו ${S.taste.length}</span></div>
  <p class="sub">בוחרים לפחות 3, וכמה שרוצים מעבר לזה. יצירות מוכרות מנחלת הכלל, מכל הסגנונות: נוף, מופשט, מינימליסטי, פיגורטיבי, טבע וצילום.</p>
- <div class="tiles" style="margin-top:14px">${TASTE.map((t,i)=>`<button class="tile${TIMG[t[5]]?' hasimg':''}" aria-pressed="${S.taste.includes(i)}" data-act="taste" data-i="${i}" style="background-color:${t[2]};color:${t[3]};${TIMG[t[5]]?`background-image:url(&quot;${TIMG[t[5]]}&quot;)`:''}"><b>${t[0]}</b><span>${t[1]}</span></button>`).join('')}</div>
+ <div class="tiles" style="margin-top:14px">${TASTE.map((t,i)=>`<button class="tile${TIMG[t[5]]?' hasimg':''}" aria-pressed="${S.taste.includes(i)}" data-act="taste" data-i="${i}" aria-label="${t[0]}, ${t[1]} · ${t[4]}" style="background-color:${t[2]};color:${t[3]};${TIMG[t[5]]?`background-image:url(&quot;${TIMG[t[5]]}&quot;)`:''}"><b>${t[4]}</b></button>`).join('')}</div>
  <div style="min-height:16px"></div>
  <button class="btn" data-act="toWall" ${S.taste.length>=3?'':'disabled'} id="tnext">${S.taste.length>=3?'המשך':'עוד '+(3-S.taste.length)+' לפחות'}</button>`};
 V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="projects">פרויקט: ${esc(p.name)}</button>`})}
@@ -573,7 +573,7 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 20 · 07.11 22:29</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 21 · 07.11 22:42</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
