@@ -303,8 +303,9 @@ let rejectStreak=0,lastAction=null,deck=[],di=0;
 
 /* ---------- navigation ---------- */
 let stack=[];
-function go(name){stack.push(name);render()}
+function go(name){stack.push(name);try{history.pushState({am:stack.length},'')}catch(e){}render()}
 function back(){ if(stack.length>1){stack.pop();render()} }
+window.addEventListener('popstate',()=>{if($('#ov')){closeOverlay();try{history.pushState({am:stack.length},'')}catch(e){}return}back()});
 function reset(name){stack=[name];render()}
 function cur(){return stack[stack.length-1]}
 
@@ -368,6 +369,7 @@ function buildDeck(){
   if(S.orient==='portrait')list=list.filter(a=>a.h>=a.w);
   if(S.orient==='landscape')list=list.filter(a=>a.w>=a.h);
   if(S.priceOn)list=list.filter(a=>minPrice(a)<=S.priceMax);
+  if(S.sizeOn)list=list.filter(a=>(!S.minW||a.w>=S.minW)&&(!S.maxW||a.w<=S.maxW)&&(!S.minH||a.h>=S.minH)&&(!S.maxH||a.h<=S.maxH));
   list.forEach(a=>{a._s=0;a.st.forEach(s=>{if(S.styles.includes(s))a._s+=3;if(tasteStyles.includes(s))a._s+=2});if(S.mode==='together'&&PARTNER_LIKES.includes(a.id))a._s+=1;a._s+=(a.id%5)/10});
   list.sort((x,y)=>y._s-x._s);
   deck=list;di=0;
@@ -441,6 +443,13 @@ V.filter=()=>`${top()}
    <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">טווח מחיר</b><div class="sub" style="font-size:13px;margin:2px 0 0">לא חובה</div></span><button class="switch" role="switch" aria-checked="${S.priceOn}" aria-label="להגביל מחיר" data-act="priceToggle"></button></div>
    <div id="pricebox" ${S.priceOn?'':'hidden'}><label for="pm" style="font-size:14px;color:var(--n700)">עד <b id="pmv">₪${S.priceMax}</b> להדפס</label><input id="pm" type="range" min="150" max="400" step="10" value="${S.priceMax}" style="width:100%;accent-color:var(--b700);height:44px"></div>
   </div>
+  <div class="card" style="display:flex;flex-direction:column;gap:12px">
+   <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">גודל היצירה</b><div class="sub" style="font-size:13px;margin:2px 0 0">לא חובה · במ״מ · אפשר למלא רק חלק</div></span><button class="switch" role="switch" aria-checked="${!!S.sizeOn}" aria-label="להגביל גודל" data-act="sizeToggle"></button></div>
+   <div id="sizebox" ${S.sizeOn?'':'hidden'} style="display:flex;flex-direction:column;gap:10px">
+    ${[['W','רוחב'],['H','גובה']].map(([k,t])=>`<div class="row2"><div class="field"><label for="min${k}">${t} מינימלי</label><input id="min${k}" class="input" inputmode="numeric" data-size="min${k}" placeholder="למשל 300" value="${S['min'+k]||''}"></div><div class="field"><label for="max${k}">${t} מקסימלי</label><input id="max${k}" class="input" inputmode="numeric" data-size="max${k}" placeholder="למשל 1000" value="${S['max'+k]||''}"></div></div>`).join('')}
+    <p class="note" style="text-align:right;margin:0">הסינון לפי מידות היצירה המקורית. רוב היצירות זמינות גם כהדפס בגדלים קטנים יותר.</p>
+   </div>
+  </div>
  </div>
  <div class="grow" style="min-height:18px"></div>
  <button class="btn" data-act="toWall">המשך</button>`;
@@ -470,7 +479,7 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
  <button class="btn" data-act="startSwipe">מתחילים להחליף</button>`};
 V.swipe=()=>{const p=proj();
  const right=`<div class="row" style="gap:6px"><button class="iconbtn" data-act="saved" data-tab="likes" aria-label="אהבתי (${p.likes.length})" style="color:var(--b700)">${I.heart}<span class="badge">${p.likes.length}</span></button>${S.mode==='together'?`<button class="iconbtn" data-act="saved" data-tab="matches" aria-label="מאצ׳ים (${p.matches.length})" style="color:var(--m700)">${I.pair}<span class="badge m">${p.matches.length}</span></button>`:''}</div>`;
- return `<div class="top"><button class="iconbtn" data-go="filter" aria-label="סינון">${I.filter}</button><div class="logo">${LOGO}</div>${right}</div>
+ return `<div class="top"><div class="row" style="gap:6px"><button class="iconbtn" data-act="back" aria-label="חזרה">${I.back}</button><button class="iconbtn" data-go="filter" aria-label="סינון">${I.filter}</button></div><div class="logo">${LOGO}</div>${right}</div>
  <div class="row" style="justify-content:space-between;margin-top:4px"><button class="pchip" data-go="wall">${I.wall}${esc(p.name)} · ${D(p.wallW,p.wallH)}</button><span style="font-size:12px;color:var(--n700);text-align:left;line-height:1.35">גוררים את היצירה = מיקום<br>מחליקים את הכרטיס = בחירה</span></div>
  <div class="deck" id="deck"></div>
  <div class="actions">
@@ -532,6 +541,7 @@ function bind(root){
   root.querySelectorAll('[data-multi]').forEach(g=>g.querySelectorAll('[data-val]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.val,i=S.styles.indexOf(v);if(i>=0)S.styles.splice(i,1);else S.styles.push(v);b.setAttribute('aria-pressed',i<0);save();
   }));
+  root.querySelectorAll('[data-size]').forEach(el=>el.onchange=()=>{const v=parseInt(el.value.replace(/\D/g,''),10);S[el.dataset.size]=v>0?v:null;el.value=S[el.dataset.size]||'';save()});
   const pm=root.querySelector('#pm');if(pm)pm.oninput=()=>{S.priceMax=+pm.value;$('#pmv').textContent='₪'+pm.value;save()};
   root.querySelectorAll('[data-photo]').forEach(inp=>inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)loadPhoto(f)});
   ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save();const cm=$('.cmark');if(cm){const c=defCenter(p);cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';$('#ccm').textContent=Math.round((1-c.v)*p.wallH/10)}}else{toast('מזינים מספר בין 300 ל-20000 מ״מ');el.value=id==='ww'?p.wallW:p.wallH}}});
@@ -628,7 +638,7 @@ function showRecal(){
 
 /* ---------- actions ---------- */
 const A={
-  back:()=>back(),
+  back:()=>{let h=null;try{h=history.state}catch(e){}if(h&&h.am>1)history.back();else back()},
   lightToggle:()=>{S.lightOn=S.lightOn===false;save();const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y},
   zoomIn:()=>{S._zoom=Math.min(3,(S._zoom||1)+.5);applyZoom()},
   zoomOut:()=>{S._zoom=Math.max(1,(S._zoom||1)-.5);applyZoom()},
@@ -654,6 +664,7 @@ const A={
   resetDemo:()=>{overlay(`<div class="sheet" role="dialog"><h2>לאפס את הדמו?</h2><p class="sub" style="margin:0">כל מה ששמרת בטלפון הזה יימחק, ונחזור למסך הפתיחה.</p><button class="btn" data-act="resetYes">כן, לאפס</button><button class="btn soft" data-act="close">ביטול</button></div>`)},
   resetYes:()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
   skipPath:()=>{S.styles=[];S.taste=[];save();go('wall')},
+  sizeToggle:b=>{S.sizeOn=!S.sizeOn;b.setAttribute('aria-checked',S.sizeOn);$('#sizebox').hidden=!S.sizeOn;save()},
   priceToggle:b=>{S.priceOn=!S.priceOn;b.setAttribute('aria-checked',S.priceOn);$('#pricebox').hidden=!S.priceOn;save()},
   taste:b=>{const i=+b.dataset.i,k=S.taste.indexOf(i);
     if(k>=0)S.taste.splice(k,1);else S.taste.push(i);
@@ -691,6 +702,7 @@ const A={
 
 /* ---------- start ---------- */
 if(S.registered&&S.projects.length)stack=['welcome','projects'];else stack=['welcome'];
+try{history.replaceState({am:stack.length},'')}catch(e){}
 render();
 })();
 </script>
