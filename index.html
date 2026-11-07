@@ -66,6 +66,8 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .cmark{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:auto;touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:2}
 .cmark::before{content:"";width:26px;height:26px;border-radius:999px;border:3px solid var(--b700);background:rgba(252,250,247,.7);box-shadow:0 2px 6px rgba(23,19,15,.4)}
 .cmark::after{content:"";position:absolute;width:6px;height:6px;border-radius:999px;background:var(--b700)}
+.wall,.wall *,.handle,.cmark,.scard{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.wall img{pointer-events:none;-webkit-user-drag:none}
 .loupe{position:absolute;width:116px;height:116px;border-radius:999px;border:3px solid var(--m500);box-shadow:0 6px 18px rgba(23,19,15,.45);background-repeat:no-repeat;background-color:#000;pointer-events:none;z-index:5}
 .loupe::before,.loupe::after{content:"";position:absolute;background:var(--m500)}
 .loupe::before{left:57px;top:40px;width:2px;height:36px}
@@ -370,6 +372,8 @@ function computeLight(p,done){const src=photos[p.id];if(!src)return;const im=new
   let r=0,g=0,b=0,n=0;for(let yy=Math.floor(v0*H);yy<Math.ceil(v1*H);yy++)for(let xx=Math.floor(u0*W);xx<Math.ceil(u1*W);xx++){const i=(yy*W+xx)*4;r+=d[i];g+=d[i+1];b+=d[i+2];n++}
   if(!n)return;r/=n;g/=n;b/=n;const lum=.2126*r+.7152*g+.0722*b;const m=Math.max(r,g,b)||1;
   p.light={b:Math.min(1.08,Math.max(.55,lum/205)),t:[r,g,b].map(v=>Math.round(v/m*255))};save();done&&done()};im.src=src}
+function sizeRule(p){const z=p.size||{};const auto={minW:Math.round(p.wallW*.12),maxW:Math.round(p.wallW*.9),minH:null,maxH:Math.round(p.wallH*.9)};const r={on:z.on!==false,auto};['minW','maxW','minH','maxH'].forEach(k=>r[k]=(z[k]!==undefined)?z[k]:auto[k]);return r}
+function refreshSize(p){const z=sizeRule(p);['minW','maxW','minH','maxH'].forEach(k=>{const el=document.getElementById(k);if(el)el.value=z[k]||''})}
 function defCenter(p){return p.center||{u:.5,v:Math.min(.85,Math.max(.15,1-1450/p.wallH))}}
 function getPos(p,id){return (p.pos&&p.pos[id])||defCenter(p)}
 function clampPos(q,hu,hv){return {u:Math.min(1-hu,Math.max(hu,q.u)),v:Math.min(1-hv,Math.max(hv,q.v))}}
@@ -398,7 +402,7 @@ function buildDeck(){
   if(S.orient==='portrait')list=list.filter(a=>a.h>=a.w);
   if(S.orient==='landscape')list=list.filter(a=>a.w>=a.h);
   if(S.priceOn)list=list.filter(a=>minPrice(a)<=S.priceMax);
-  if(S.sizeOn)list=list.filter(a=>(!S.minW||a.w>=S.minW)&&(!S.maxW||a.w<=S.maxW)&&(!S.minH||a.h>=S.minH)&&(!S.maxH||a.h<=S.maxH));
+  {const z=sizeRule(p);if(z.on)list=list.filter(a=>(!z.minW||a.w>=z.minW)&&(!z.maxW||a.w<=z.maxW)&&(!z.minH||a.h>=z.minH)&&(!z.maxH||a.h<=z.maxH))}
   list.forEach(a=>{a._s=0;a.st.forEach(s=>{if(S.styles.includes(s))a._s+=3;if(tasteStyles.includes(s))a._s+=2});if(S.mode==='together'&&PL(a))a._s+=1;a._s+=((a.id*7919)%97)/100});
   list.sort((x,y)=>y._s-x._s);
   deck=list;di=0;
@@ -472,13 +476,6 @@ V.filter=()=>`${top()}
    <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">טווח מחיר</b><div class="sub" style="font-size:13px;margin:2px 0 0">לא חובה</div></span><button class="switch" role="switch" aria-checked="${S.priceOn}" aria-label="להגביל מחיר" data-act="priceToggle"></button></div>
    <div id="pricebox" ${S.priceOn?'':'hidden'}><label for="pm" style="font-size:14px;color:var(--n700)">עד <b id="pmv">₪${S.priceMax}</b> להדפס</label><input id="pm" type="range" min="150" max="400" step="10" value="${S.priceMax}" style="width:100%;accent-color:var(--b700);height:44px"></div>
   </div>
-  <div class="card" style="display:flex;flex-direction:column;gap:12px">
-   <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">גודל היצירה</b><div class="sub" style="font-size:13px;margin:2px 0 0">לא חובה · במ״מ · אפשר למלא רק חלק</div></span><button class="switch" role="switch" aria-checked="${!!S.sizeOn}" aria-label="להגביל גודל" data-act="sizeToggle"></button></div>
-   <div id="sizebox" ${S.sizeOn?'':'hidden'} style="display:flex;flex-direction:column;gap:10px">
-    ${[['W','רוחב'],['H','גובה']].map(([k,t])=>`<div class="row2"><div class="field"><label for="min${k}">${t} מינימלי</label><input id="min${k}" class="input" inputmode="numeric" data-size="min${k}" placeholder="למשל 300" value="${S['min'+k]||''}"></div><div class="field"><label for="max${k}">${t} מקסימלי</label><input id="max${k}" class="input" inputmode="numeric" data-size="max${k}" placeholder="למשל 1000" value="${S['max'+k]||''}"></div></div>`).join('')}
-    <p class="note" style="text-align:right;margin:0">הסינון לפי מידות היצירה המקורית. רוב היצירות זמינות גם כהדפס בגדלים קטנים יותר.</p>
-   </div>
-  </div>
  </div>
  <div class="grow" style="min-height:18px"></div>
  <button class="btn" data-act="toWall">המשך</button>`;
@@ -504,6 +501,12 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
   <div class="field"><label for="wh">גובה הקיר (מ״מ)</label><input id="wh" class="input" inputmode="numeric" value="${p.wallH}"></div>
  </div>
  <p class="note" style="text-align:right;margin:8px 0 0">${photos[p.id]&&p.photoR?'המידות הן של האזור שסימנת בין 4 הפינות.':'טיפ: 2400 מ״מ = 2.4 מטר.'}</p>
+ ${(()=>{const z=sizeRule(p);return `<div class="card" style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+   <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">גודל היצירה שמתאים לקיר</b><div class="sub" style="font-size:13px;margin:2px 0 0">רק יצירות שנכנסות בקיר. מותאם אוטומטית, אפשר לשנות</div></span><button class="switch" role="switch" aria-checked="${z.on}" aria-label="סינון לפי גודל הקיר" data-act="sizeToggle"></button></div>
+   <div id="sizebox" ${z.on?'':'hidden'} style="display:flex;flex-direction:column;gap:10px">
+    ${[['W','רוחב'],['H','גובה']].map(([k,t])=>`<div class="row2"><div class="field"><label for="min${k}">${t} מינימלי (מ״מ)</label><input id="min${k}" class="input" inputmode="numeric" data-size="min${k}" placeholder="ללא" value="${z['min'+k]||''}"></div><div class="field"><label for="max${k}">${t} מקסימלי (מ״מ)</label><input id="max${k}" class="input" inputmode="numeric" data-size="max${k}" placeholder="ללא" value="${z['max'+k]||''}"></div></div>`).join('')}
+    <div class="row" style="justify-content:space-between"><span class="note" style="text-align:right">אוטומטי: עד 90% מהקיר, ולפחות 12% מרוחבו</span><button class="link" data-act="sizeAuto">חזרה לאוטומטי</button></div>
+   </div></div>`})()}
  <div class="grow" style="min-height:16px"></div>
  <button class="btn" data-act="startSwipe">מתחילים להחליף</button>`};
 V.swipe=()=>{const p=proj();
@@ -571,10 +574,10 @@ function bind(root){
   root.querySelectorAll('[data-multi]').forEach(g=>g.querySelectorAll('[data-val]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.val,i=S.styles.indexOf(v);if(i>=0)S.styles.splice(i,1);else S.styles.push(v);b.setAttribute('aria-pressed',i<0);save();
   }));
-  root.querySelectorAll('[data-size]').forEach(el=>el.onchange=()=>{const v=parseInt(el.value.replace(/\D/g,''),10);S[el.dataset.size]=v>0?v:null;el.value=S[el.dataset.size]||'';save()});
+  root.querySelectorAll('[data-size]').forEach(el=>el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);p.size=p.size||{};p.size[el.dataset.size]=v>0?v:null;el.value=p.size[el.dataset.size]||'';save()});
   const pm=root.querySelector('#pm');if(pm)pm.oninput=()=>{S.priceMax=+pm.value;$('#pmv').textContent='₪'+pm.value;save()};
   root.querySelectorAll('[data-photo]').forEach(inp=>inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)loadPhoto(f)});
-  ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save();const cm=$('.cmark');if(cm){const c=defCenter(p);cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';$('#ccm').textContent=Math.round((1-c.v)*p.wallH/10)}}else{toast('מזינים מספר בין 300 ל-20000 מ״מ');el.value=id==='ww'?p.wallW:p.wallH}}});
+  ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save();refreshSize(p);const cm=$('.cmark');if(cm){const c=defCenter(p);cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';$('#ccm').textContent=Math.round((1-c.v)*p.wallH/10)}}else{toast('מזינים מספר בין 300 ל-20000 מ״מ');el.value=id==='ww'?p.wallW:p.wallH}}});
 }
 
 /* ---------- corner editor ---------- */
@@ -607,6 +610,7 @@ function splitRegion(P){const top={};P.forEach(([x,y])=>{if(top[x]===undefined||
   const all=fit(xs);let best=null;for(let i=Math.floor(xs.length*.15);i<Math.ceil(xs.length*.85);i++){const L=fit(xs.slice(0,i+1)),R=fit(xs.slice(i));const e=L.e+R.e;if(!best||e<best.e)best={e,i,L,R}}
   if(best&&best.e<all.e*.35&&Math.abs(best.L.m-best.R.m)>.12){const cx=xs[best.i];return [P.filter(q=>q[0]<=cx),P.filter(q=>q[0]>cx)]}return [P]}
 window.__wallQuads=wallQuads;
+document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('.wall,.handle,.cmark,.scard'))e.preventDefault()});
 async function detectWalls(){const p=proj();if(!photos[p.id])return;
   const o=overlay(`<div class="sheet" role="dialog" aria-label="זיהוי קיר"><h2>מזהים את הקיר…</h2><p class="sub" style="margin:0" id="dprog">בפעם הראשונה נטען מודל זיהוי (כמה מגה). אחר כך זה מהיר.</p></div>`);o.dataset.lock=1;
   try{const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');T.env.allowLocalModels=false;
@@ -730,7 +734,8 @@ const A={
   resetDemo:()=>{overlay(`<div class="sheet" role="dialog"><h2>לאפס את הדמו?</h2><p class="sub" style="margin:0">כל מה ששמרת בטלפון הזה יימחק, ונחזור למסך הפתיחה.</p><button class="btn" data-act="resetYes">כן, לאפס</button><button class="btn soft" data-act="close">ביטול</button></div>`)},
   resetYes:()=>{try{localStorage.removeItem(KEY)}catch(e){}location.reload()},
   skipPath:()=>{S.styles=[];S.taste=[];save();go('wall')},
-  sizeToggle:b=>{S.sizeOn=!S.sizeOn;b.setAttribute('aria-checked',S.sizeOn);$('#sizebox').hidden=!S.sizeOn;save()},
+  sizeToggle:b=>{const p=proj();p.size=p.size||{};const on=!sizeRule(p).on;p.size.on=on;b.setAttribute('aria-checked',on);$('#sizebox').hidden=!on;save()},
+  sizeAuto:()=>{const p=proj();p.size={on:true};save();refreshSize(p)},
   priceToggle:b=>{S.priceOn=!S.priceOn;b.setAttribute('aria-checked',S.priceOn);$('#pricebox').hidden=!S.priceOn;save()},
   taste:b=>{const i=+b.dataset.i,k=S.taste.indexOf(i);
     if(k>=0)S.taste.splice(k,1);else S.taste.push(i);
