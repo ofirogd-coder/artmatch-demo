@@ -217,7 +217,7 @@ const I = {
 /* ---------- original sample artworks (drawn in SVG) ---------- */
 function rng(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
 function svgArt(a){
-  if(a.img)return `<img src="${a.img}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" style="display:block;width:100%;height:100%;object-fit:cover">`;
+  if(a.img)return `<img src="${a.img}" alt="" decoding="async" onerror="if(!this.dataset.r){this.dataset.r=1;this.src=this.src.replace('/full/843,/','/full/!600,600/')}" style="display:block;width:100%;height:100%;object-fit:cover">`;
   const W=100,H=Math.round(100*a.h/a.w),R=rng(a.id+3),p=a.pal;let b='';
   switch(a.kind){
     case 'sunset':
@@ -279,10 +279,10 @@ const PARTNER_LIKES=[2,5,9,13,6];
 const PL=a=>a.museum?(a.id%6===0):PARTNER_LIKES.includes(a.id);
 function AR(a){return a.museum?{name:a.artist||'אמן/ית לא ידוע/ה',city:a.date||'',bio:a.credit,site:a.page,ig:''}:ARTISTS[a.ar]}
 /* ---------- public-domain museum artworks (Art Institute of Chicago, CC0) ---------- */
-let MUSEUM_READY=false;
+let MUSEUM_READY=false;let IIIF='https://www.artic.edu/iiif/2';try{const b=localStorage.getItem('artmatch-iiif');if(b)IIIF=b}catch(e){}
 const MQ=[['landscape','נוף'],['seascape','נוף'],['mountains','נוף'],['abstract','מופשט'],['abstraction','מופשט'],['geometric','מינימליסטי'],['minimal','מינימליסטי'],['silhouette','מינימליסטי'],['portrait','פיגורטיבי'],['figure','פיגורטיבי'],['dance','פיגורטיבי'],['photograph','צילום'],['street','צילום'],['flowers','טבע ובוטני'],['botanical','טבע ובוטני'],['birds','טבע ובוטני'],['still life','טבע ובוטני'],['woodblock','נוף'],['impressionism','נוף'],['city','צילום']];
 const MKEY='artmatch-museum-v1';
-function addMuseum(list){const seen=new Set(ARTS.map(a=>a.id));list.forEach(m=>{const id=1000000+m.id;if(seen.has(id))return;seen.add(id);ARTS.push({id,museum:true,t:m.t,artist:m.ar,date:m.d,w:m.w,h:m.h,st:[m.s],tech:m.tech||'',img:`https://www.artic.edu/iiif/2/${m.img}/full/600,/0/default.jpg`,page:`https://www.artic.edu/artworks/${m.id}`,credit:'Art Institute of Chicago · נחלת הכלל (CC0)'})});MUSEUM_READY=ARTS.some(a=>a.museum)}
+function addMuseum(list){const seen=new Set(ARTS.map(a=>a.id));list.forEach(m=>{const id=1000000+m.id;if(seen.has(id))return;seen.add(id);ARTS.push({id,museum:true,t:m.t,artist:m.ar,date:m.d,w:m.w,h:m.h,st:[m.s],tech:m.tech||'',img:`${IIIF}/${m.img}/full/843,/0/default.jpg`,page:`https://www.artic.edu/artworks/${m.id}`,credit:'Art Institute of Chicago · נחלת הכלל (CC0)'})});MUSEUM_READY=ARTS.some(a=>a.museum)}
 function parseDims(r){const dd=(r.dimensions_detail||[]).find(x=>x&&x.width&&x.height);if(dd)return {w:Math.round(dd.width*10),h:Math.round(dd.height*10)};
   const m=/([\d.]+)\s*[×x]\s*([\d.]+)\s*cm/.exec(r.dimensions||'');if(m)return {h:Math.round(parseFloat(m[1])*10),w:Math.round(parseFloat(m[2])*10)};return null}
 async function loadMuseum(){try{const c=JSON.parse(localStorage.getItem(MKEY)||'null');if(c&&c.length>200){addMuseum(c);return}}catch(e){}
@@ -290,7 +290,7 @@ async function loadMuseum(){try{const c=JSON.parse(localStorage.getItem(MKEY)||'
   const okCls=/paint|print|draw|photo|watercolor|woodblock|lithograph|etching|engraving|poster|gouache|pastel/i;
   const one=async([q,st],page)=>{const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),15000);
     try{const u=`https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(q)}&query[term][is_public_domain]=true&fields=${flds}&limit=100&page=${page}`;
-      const r=await fetch(u,{signal:ctl.signal});if(!r.ok)return;const j=await r.json();
+      const r=await fetch(u,{signal:ctl.signal});if(!r.ok)return;const j=await r.json();if(j.config&&j.config.iiif_url&&/^https:\/\//.test(j.config.iiif_url)){IIIF=j.config.iiif_url;try{localStorage.setItem('artmatch-iiif',IIIF)}catch(e){}}
       (j.data||[]).forEach(x=>{if(!x.image_id||!okCls.test(x.classification_title||''))return;const d=parseDims(x);if(!d||d.w<80||d.h<80||d.w>4000||d.h>4000)return;
         out.push({id:x.id,t:x.title,ar:x.artist_title,d:x.date_display,img:x.image_id,w:d.w,h:d.h,s:st,tech:x.medium_display?String(x.medium_display).slice(0,60):''})})}catch(e){}finally{clearTimeout(t)}};
   const jobs=[];MQ.forEach(q=>{jobs.push([q,1]);jobs.push([q,2])});
