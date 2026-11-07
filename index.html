@@ -503,7 +503,8 @@ V.taste=()=>{setTimeout(loadTasteImages,0);return `${top()}
  <div class="row" style="justify-content:space-between;margin-top:6px"><h1 style="font-size:24px">ציורים שאהבת</h1><span class="demo-tag" id="tcount">נבחרו ${S.taste.length}</span></div>
  <p class="sub">בוחרים לפחות 3, וכמה שרוצים מעבר לזה. יצירות מוכרות מנחלת הכלל, מכל הסגנונות: נוף, מופשט, מינימליסטי, פיגורטיבי, טבע וצילום.</p>
  <div class="tiles" style="margin-top:14px">${TASTE.map((t,i)=>`<button class="tile${TIMG[t[5]]?' hasimg':''}" aria-pressed="${S.taste.includes(i)}" data-act="taste" data-i="${i}" aria-label="${t[0]}, ${t[1]} · ${t[4]}" style="background-color:${t[2]};color:${t[3]};${TIMG[t[5]]?`background-image:url(&quot;${TIMG[t[5]]}&quot;)`:''}"><b>${t[4]}</b></button>`).join('')}</div>
- <div style="min-height:16px"></div>
+ <button class="link" data-go="filter" style="align-self:center;margin-top:8px">סינון לפי סגנון, כיוון ומחיר</button>
+ <div style="min-height:8px"></div>
  <button class="btn" data-act="toWall" ${S.taste.length>=3?'':'disabled'} id="tnext">${S.taste.length>=3?'המשך':'עוד '+(3-S.taste.length)+' לפחות'}</button>`};
 V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="projects">פרויקט: ${esc(p.name)}</button>`})}
  <div class="stack" style="margin-top:8px"><h1 style="font-size:24px">הקיר שלך</h1><p class="sub" style="margin:0">מצלמים את הקיר ישר מולו, ומזינים את המידות שלו. כך כל יצירה תופיע בגודל האמיתי.</p></div>
@@ -531,7 +532,7 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
  <button class="btn" data-act="startSwipe">המשך לבחירת יצירות ←</button>`};
 V.swipe=()=>{const p=proj();
  const right=`<div class="row" style="gap:6px"><button class="iconbtn" data-act="saved" data-tab="likes" aria-label="אהבתי (${p.likes.length})" style="color:var(--b700)">${I.heart}<span class="badge">${p.likes.length}</span></button>${S.mode==='together'?`<button class="iconbtn" data-act="saved" data-tab="matches" aria-label="מאצ׳ים (${p.matches.length})" style="color:var(--m700)">${I.pair}<span class="badge m">${p.matches.length}</span></button>`:''}</div>`;
- return `<div class="top"><div class="row" style="gap:6px"><button class="iconbtn" data-act="back" aria-label="חזרה">${I.back}</button><button class="iconbtn" data-go="filter" aria-label="סינון">${I.filter}</button></div><div class="logo">${LOGO}</div>${right}</div>
+ return `<div class="top"><div class="row" style="gap:6px"><button class="iconbtn" data-act="back" aria-label="חזרה">${I.back}</button><button class="iconbtn" data-go="taste" aria-label="סינון">${I.filter}</button></div><div class="logo">${LOGO}</div>${right}</div>
  <div class="row" style="justify-content:space-between;margin-top:4px"><button class="pchip" data-go="wall">${I.wall}${esc(p.name)} · ${D(p.wallW,p.wallH)}</button><button class="pchip" data-act="noFilter" aria-pressed="${!!S.noFilter}" style="${S.noFilter?'background:var(--b200);color:var(--b900);font-weight:500':''}">${S.noFilter?'✓ ללא סינון':'ללא סינון'}</button></div>
  <div class="row" style="justify-content:space-between;margin-top:8px;gap:8px"><div class="tabs" role="tablist" style="flex:1;padding:3px;border:1px solid var(--m500)"><button class="tab" role="tab" style="min-height:38px;font-size:14px" aria-selected="${S.view!=='art'}" data-act="view" data-v="wall">על הקיר</button><button class="tab" role="tab" style="min-height:38px;font-size:14px" aria-selected="${S.view==='art'}" data-act="view" data-v="art">היצירה בלבד</button></div>
  ${S.view!=='art'?'<span style="font-size:11px;color:var(--n700);line-height:1.3;text-align:left">גוררים יצירה = מיקום<br>מחליקים כרטיס = בחירה</span>':''}</div>
@@ -573,7 +574,7 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 22 · 07.11 22:50</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 23 · 07.11 22:52</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
@@ -687,7 +688,7 @@ function drawDeck(){
   const el=$('#deck');if(!el)return;
   const a=deck[di],n=deck[di+1];
   if(!a){const p=proj();const rest=ARTS.filter(x=>!p.likes.includes(x.id));if(rest.length&&deck.length){p.seen=p.likes.slice();save();buildDeck();if(deck.length){toast('סבב נוסף: היצירות שדילגת עליהן');return drawDeck()}}
-    el.innerHTML=`<div class="empty" style="height:100%;justify-content:center"><h2>אין כרגע יצירות שמתאימות</h2><span>אפשר להרחיב את הסינון או להתחיל מחדש.</span><button class="btn" style="width:auto" data-act="restartDeck">להתחיל מחדש</button><button class="link" data-go="filter">לשנות סינון</button></div>`;bind(el);return}
+    el.innerHTML=`<div class="empty" style="height:100%;justify-content:center"><h2>אין כרגע יצירות שמתאימות</h2><span>אפשר להרחיב את הסינון או להתחיל מחדש.</span><button class="btn" style="width:auto" data-act="restartDeck">להתחיל מחדש</button><button class="link" data-go="taste">לשנות סינון</button></div>`;bind(el);return}
   el.innerHTML=(n?cardHTML(n,'back'):'')+cardHTML(a,'front');
   if(S.view==='art')el.querySelectorAll('.scard').forEach(cd=>{cd.style.bottom='0';const bx=cd.querySelector('.artonly'),fr=cd.querySelector('.aframe');const aa=ARTS.find(x=>x.id===+cd.dataset.id);const W=bx.clientWidth-44,H=bx.clientHeight-56;const r=aa.w/aa.h;let w=W,h=W/r;if(h>H){h=H;w=H*r}fr.style.width=w+'px';fr.style.height=h+'px'});
   else el.querySelectorAll('.scard').forEach(cd=>{const wf=cd.querySelector('.wallfit');const r=+cd.querySelector('.wall').dataset.r;const mh=cd.querySelector('.meta').offsetHeight;
@@ -737,8 +738,8 @@ function showRecal(){
   const o=overlay(`<div class="sheet" role="dialog" aria-label="כיול מחדש">
    <h2>נראה שעוד לא מצאנו את הכיוון</h2>
    <p class="sub" style="margin:0">דילגת על ${rejectStreak} יצירות ברצף. רוצה לכוון מחדש?</p>
-   <button class="btn" data-act="recalFilter">לחזור לסינון</button>
-   <button class="btn soft" data-act="recalTaste">לבחור מחדש ציורים שאהבת</button>
+   <button class="btn" data-act="recalTaste">לחזור לסינון</button>
+   <button class="btn soft" data-act="recalFilter">סינון לפי סגנון, כיוון ומחיר</button>
    <button class="link" data-act="recalKeep">להמשיך להחליף</button>
   </div>`);o.dataset.lock=1;
 }
@@ -798,7 +799,7 @@ const A={
   matchView:b=>{closeOverlay();S._art=+b.dataset.id;S._fmt=null;go('detail')},
   restartDeck:()=>{proj().seen=[];save();buildDeck();render()},
   recalFilter:()=>{rejectStreak=0;closeOverlay();go('filter')},
-  recalTaste:()=>{rejectStreak=0;S.taste=[];save();closeOverlay();go('taste')},
+  recalTaste:()=>{rejectStreak=0;closeOverlay();go('taste')},
   recalKeep:()=>{rejectStreak=0;closeOverlay()},
   toggleLike:()=>{const p=proj(),id=S._art;if(p.likes.includes(id)){p.likes=p.likes.filter(x=>x!==id);p.matches=p.matches.filter(x=>x!==id);toast('הוסר מאהבתי')}else{p.likes.push(id);if(S.mode==='together'&&PL(ARTS.find(a=>a.id===id))&&!p.matches.includes(id)){p.matches.push(id);save();render();showMatch(ARTS.find(a=>a.id===id));return}toast('נשמר באהבתי')}save();render()},
   ext:b=>{overlay(`<div class="sheet" role="dialog"><h2>${esc(b.dataset.v)}</h2><p class="sub" style="margin:0">באפליקציה האמיתית הכפתור פותח את הקישור של האמן. בדמו האמנים בדויים, אז אין לאן לעבור.</p><button class="btn soft" data-act="close">הבנתי</button></div>`)},
