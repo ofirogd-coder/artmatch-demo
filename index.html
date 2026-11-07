@@ -61,7 +61,7 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .wall .floor{position:absolute;left:0;right:0;bottom:0;height:12%;background:#CDBFAF}
 .wall .art{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);box-shadow:0 6px 18px rgba(23,19,15,.35);outline:3px solid #FCFAF7;background:#fff}
 .wall .art svg{display:block;width:100%;height:100%}
-.wall .dims{position:absolute;bottom:8px;right:8px;background:rgba(23,19,15,.72);color:#FCFAF7;font-size:12px;padding:4px 10px;border-radius:999px}
+.wall .dims{z-index:3;position:absolute;bottom:8px;right:8px;background:rgba(23,19,15,.72);color:#FCFAF7;font-size:12px;padding:4px 10px;border-radius:999px}
 .cedit{overflow:visible!important;border-radius:0!important}
 .cmark{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:auto;touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:2}
 .cmark::before{content:"";width:26px;height:26px;border-radius:999px;border:3px solid var(--b700);background:rgba(252,250,247,.7);box-shadow:0 2px 6px rgba(23,19,15,.4)}
@@ -91,6 +91,7 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .aframe{box-shadow:0 8px 24px rgba(23,19,15,.25);outline:6px solid #FCFAF7;background:#fff}
 .aframe svg,.aframe img{display:block;width:100%;height:100%}
 .ver{position:absolute;left:16px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font-size:10px;color:var(--n500);opacity:.8;pointer-events:none;z-index:70;letter-spacing:.02em}
+.occ{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;object-fit:fill}
 .plane{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;pointer-events:none}
 .ph-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .upl{position:relative;min-height:52px;border-radius:16px;border:1.5px solid var(--n600);background:var(--n50);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;font-size:15px}
@@ -330,7 +331,7 @@ const photos={}; // project id -> dataURL (memory copy)
 S.projects.forEach(p=>{if(p.photo)photos[p.id]=p.photo});
 function save(){
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){
-    try{const c=JSON.parse(JSON.stringify(S));c.projects.forEach(p=>delete p.photo);localStorage.setItem(KEY,JSON.stringify(c))}catch(e2){}
+    try{const c=JSON.parse(JSON.stringify(S));c.projects.forEach(p=>{delete p.photo;delete p.occ});localStorage.setItem(KEY,JSON.stringify(c))}catch(e2){}
   }
 }
 const proj=()=>S.projects.find(p=>p.id===S.cur);
@@ -366,6 +367,7 @@ function wallHTML(p,art,size,opts={}){
     let ad=`<div class="art${opts.drag?' drag':''}" ${opts.drag?`data-aid="${art.id}" data-hu="${wp/200}" data-hv="${hp/200}"`:''} style="left:${pos.u*100}%;top:${pos.v*100}%;width:${wp.toFixed(2)}%;height:${hp.toFixed(2)}%${lit?`;filter:brightness(${p.light.b.toFixed(2)})`:''}">${svgArt(art)}${lit?`<span class="tint" style="background:rgb(${p.light.t.join(',')})"></span>`:''}</div>`;
     if(opts.drag)ad=`<div class="gl h" style="top:${pos.v*100}%"></div><div class="gl v" style="left:${pos.u*100}%;top:${pos.v*100+hp/2}%"></div>`+ad;
     inner+=persp?`<div class="plane" data-c='${JSON.stringify(p.corners)}'>${ad}</div>`:ad;
+    if(persp&&p.occ&&p.occOn!==false)inner+=`<img class="occ" src="${p.occ}" alt="">`;
     inner+=`<span class="dims">${D(w,h)} מ״מ על קיר ${D(p.wallW,p.wallH)}</span>`;
   }
   const chip=opts.drag?`<span class="hchip">מרכז היצירה <b class="hcm">${art?Math.round((1-clampPos(getPos(p,art.id),0,0).v)*p.wallH/10):''}</b> ס״מ מהרצפה</span>`:'';
@@ -494,7 +496,7 @@ V.taste=()=>`${top()}
 V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="projects">פרויקט: ${esc(p.name)}</button>`})}
  <div class="stack" style="margin-top:8px"><h1 style="font-size:24px">הקיר שלך</h1><p class="sub" style="margin:0">מצלמים את הקיר ישר מולו, ומזינים את המידות שלו. כך כל יצירה תופיע בגודל האמיתי.</p></div>
  <div style="margin-top:14px">${photos[p.id]&&p.photoR?cornerEditor(p):wallHTML(p,null,null,{maxH:'34vh'})}</div>
- ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div><button class="btn soft" data-act="detectWalls" style="min-height:44px;font-size:15px;margin-top:6px">✨ זיהוי קיר אוטומטי (ניסיוני)</button><div style="font-size:14px;color:var(--b800);margin-top:2px">העיגול הכתום הוא מרכז היצירה: <b id="ccm">${Math.round((1-defCenter(p).v)*p.wallH/10)}</b> ס״מ מהרצפה. גוררים אותו למקום שבו תרצו לתלות.</div>`:''}
+ ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div><button class="btn soft" data-act="detectWalls" style="min-height:44px;font-size:15px;margin-top:6px">✨ זיהוי קיר אוטומטי (ניסיוני)</button>${p.occ?`<div class="row" style="justify-content:space-between;margin-top:8px;gap:10px"><span style="font-size:14px;color:var(--n800)">זוהו מול הקיר: ${esc((p.occLabels||[]).join(', '))}. היצירה תוצג מאחוריהם.</span><button class="switch" role="switch" aria-checked="${p.occOn!==false}" aria-label="יצירה מאחורי חפצים" data-act="occToggle"></button></div>`:''}<div style="font-size:14px;color:var(--b800);margin-top:2px">העיגול הכתום הוא מרכז היצירה: <b id="ccm">${Math.round((1-defCenter(p).v)*p.wallH/10)}</b> ס״מ מהרצפה. גוררים אותו למקום שבו תרצו לתלות.</div>`:''}
  <div class="ph-actions" style="margin-top:12px">
   <input type="file" id="fcam" accept="image/*" capture="environment" data-photo hidden>
   <input type="file" id="fgal" accept="image/*" data-photo hidden>
@@ -558,7 +560,7 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 17 · 07.11 22:15</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 18 · 07.11 22:19</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
@@ -618,14 +620,25 @@ function splitRegion(P){const top={};P.forEach(([x,y])=>{if(top[x]===undefined||
   const fit=a=>{const n=a.length;let sx=0,sy=0,sxx=0,sxy=0;a.forEach(x=>{const y=top[x];sx+=x;sy+=y;sxx+=x*x;sxy+=x*y});const den=n*sxx-sx*sx||1;const m=(n*sxy-sx*sy)/den,b=(sy-m*sx)/n;let e=0;a.forEach(x=>{const r=top[x]-(m*x+b);e+=r*r});return {m,e}};
   const all=fit(xs);let best=null;for(let i=Math.floor(xs.length*.15);i<Math.ceil(xs.length*.85);i++){const L=fit(xs.slice(0,i+1)),R=fit(xs.slice(i));const e=L.e+R.e;if(!best||e<best.e)best={e,i,L,R}}
   if(best&&best.e<all.e*.35&&Math.abs(best.L.m-best.R.m)>.12){const cx=xs[best.i];return [P.filter(q=>q[0]<=cx),P.filter(q=>q[0]>cx)]}return [P]}
-window.__wallQuads=wallQuads;
+window.__wallQuads=wallQuads;window.__buildOcc=buildOccluders;window.__proj=()=>proj();
 document.addEventListener('contextmenu',e=>{if(e.target.closest&&e.target.closest('.wall,.handle,.cmark,.scard'))e.preventDefault()});
+const OCC=/lamp|chair|sofa|couch|table|desk|plant|flower|vase|person|cushion|pillow|bed|cabinet|shelf|bookcase|television|monitor|screen|computer|fan|box|bottle|stool|bench|light|chandelier|sconce|curtain|blind|pot|basket|clock|book|toy|radiator|heater|plaything|chest|wardrobe|counter|ottoman|pouf|stand|kitchen island|car|bicycle|animal|dog|cat/i;
+const NOTOCC=/wall|floor|ceiling|window|door|painting|picture|mirror|sky|building|rug|carpet/i;
+async function buildOccluders(p,out){const segs=out.filter(o=>OCC.test(o.label)&&!NOTOCC.test(o.label));p.occ=null;p.occLabels=null;if(!segs.length)return;
+  const im=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=photos[p.id]});const W=im.width,H=im.height;
+  const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mx=mc.getContext('2d');const md=mx.createImageData(W,H);
+  segs.forEach(o=>{const m=o.mask,ch=m.channels||1;for(let y=0;y<H;y++)for(let x=0;x<W;x++){const sx=Math.min(m.width-1,Math.floor(x*m.width/W)),sy=Math.min(m.height-1,Math.floor(y*m.height/H));if(m.data[(sy*m.width+sx)*ch]>127)md.data[(y*W+x)*4+3]=255}});
+  mx.putImageData(md,0,0);
+  const oc=document.createElement('canvas');oc.width=W;oc.height=H;const ox=oc.getContext('2d');ox.drawImage(im,0,0);ox.globalCompositeOperation='destination-in';
+  try{ox.filter='blur(1.5px)'}catch(e){}ox.drawImage(mc,0,0);
+  p.occ=oc.toDataURL('image/png');p.occLabels=[...new Set(segs.map(o=>HE[o.label.trim()]||o.label.trim()))].slice(0,6);save()}
+const HE={lamp:'מנורה',chair:'כיסא',sofa:'ספה',armchair:'כורסה','swivel chair':'כיסא',table:'שולחן','coffee table':'שולחן קפה',desk:'שולחן עבודה',plant:'צמח',flower:'פרחים',vase:'אגרטל',person:'אדם',cushion:'כרית',pillow:'כרית',bed:'מיטה',cabinet:'ארון',shelf:'מדף',bookcase:'כוננית','television receiver':'טלוויזיה',fan:'מאוורר',box:'קופסה',bottle:'בקבוק',stool:'שרפרף',bench:'ספסל',light:'תאורה',chandelier:'נברשת',sconce:'מנורת קיר',curtain:'וילון',blind:'תריס',pot:'עציץ',basket:'סל',clock:'שעון',book:'ספרים',radiator:'רדיאטור',ottoman:'הדום',wardrobe:'ארון בגדים','chest of drawers':'שידה'};
 async function detectWalls(){const p=proj();if(!photos[p.id])return;
   const o=overlay(`<div class="sheet" role="dialog" aria-label="זיהוי קיר"><h2>מזהים את הקיר…</h2><p class="sub" style="margin:0" id="dprog">בפעם הראשונה נטען מודל זיהוי (כמה מגה). אחר כך זה מהיר.</p></div>`);o.dataset.lock=1;
   try{const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');T.env.allowLocalModels=false;
     if(!window._seg)window._seg=await T.pipeline('image-segmentation','Xenova/segformer-b0-finetuned-ade-512-512',{progress_callback:x=>{const el=$('#dprog');if(el&&x.status==='progress'&&x.progress)el.textContent='טוען מודל זיהוי… '+Math.round(x.progress)+'%'}});
     const el=$('#dprog');if(el)el.textContent='מנתחים את התמונה…';
-    const out=await window._seg(photos[p.id]);const wall=out.find(r=>/wall/i.test(r.label));
+    const out=await window._seg(photos[p.id]);try{await buildOccluders(p,out)}catch(e){}const wall=out.find(r=>/wall/i.test(r.label));
     if(!wall)throw new Error('nowall');const quads=wallQuads(wall.mask);if(!quads.length)throw new Error('nowall');
     window._quads=quads;
     if(quads.length===1){A.pickWall({dataset:{i:0}});return}
@@ -645,7 +658,7 @@ function loadPhoto(file){
     const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
     c.getContext('2d').drawImage(img,0,0,c.width,c.height);
     let d;try{d=c.toDataURL('image/jpeg',.78)}catch(e){d=url}
-    photos[p.id]=d;p.photo=d;p.photoR=c.width/c.height;p.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();URL.revokeObjectURL(url);render();computeLight(p);toast('עכשיו גוררים את 4 העיגולים לפינות הקיר');
+    photos[p.id]=d;p.photo=d;p.occ=null;p.occLabels=null;p.photoR=c.width/c.height;p.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();URL.revokeObjectURL(url);render();computeLight(p);toast('עכשיו גוררים את 4 העיגולים לפינות הקיר');
   };
   img.onerror=()=>toast('לא הצלחנו לפתוח את הקובץ. נסו תמונה אחרת');
   img.src=url;
@@ -722,6 +735,7 @@ const A={
   view:b=>{S.view=b.dataset.v;save();render()},
   back:()=>{let h=null;try{h=history.state}catch(e){}if(h&&h.am>1)history.back();else back()},
   lightToggle:()=>{S.lightOn=S.lightOn===false;save();const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y},
+  occToggle:b=>{const p=proj();p.occOn=p.occOn===false;b.setAttribute('aria-checked',p.occOn);save()},
   zoomIn:()=>{S._zoom=Math.min(3,(S._zoom||1)+.5);applyZoom()},
   zoomOut:()=>{S._zoom=Math.max(1,(S._zoom||1)-.5);applyZoom()},
   fullWall:()=>{S._full=!S._full;const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y},
