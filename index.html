@@ -63,12 +63,17 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .wall .art svg{display:block;width:100%;height:100%}
 .wall .dims{position:absolute;bottom:8px;right:8px;background:rgba(23,19,15,.72);color:#FCFAF7;font-size:12px;padding:4px 10px;border-radius:999px}
 .cedit{overflow:visible!important;border-radius:0!important}
+.cmark{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:auto;touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:2}
+.cmark::before{content:"";width:26px;height:26px;border-radius:999px;border:3px solid var(--b700);background:rgba(252,250,247,.7);box-shadow:0 2px 6px rgba(23,19,15,.4)}
+.cmark::after{content:"";position:absolute;width:6px;height:6px;border-radius:999px;background:var(--b700)}
 .handle{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:999px;touch-action:none;display:flex;align-items:center;justify-content:center;z-index:2;cursor:grab}
 .handle::after{content:"";width:22px;height:22px;border-radius:999px;background:var(--m500);border:3px solid #FCFAF7;box-shadow:0 2px 6px rgba(23,19,15,.45)}
 .cpoly{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .gl{position:absolute;pointer-events:none;border:0 dashed rgba(23,19,15,.6)}
 .gl.h{left:0;right:0;border-top-width:1.5px}
 .gl.v{bottom:0;border-left-width:1.5px}
+.gl,.wallfit .hchip{opacity:0;transition:opacity .15s}
+.showgl .gl,.showgl .hchip,.dragging .gl,.dragging .hchip{opacity:1}
 .art.drag{pointer-events:auto;touch-action:none;cursor:grab}
 .wtools{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:8px;z-index:3}
 .wtools .iconbtn{background:rgba(252,250,247,.95);box-shadow:0 2px 8px rgba(23,19,15,.2)}
@@ -321,32 +326,34 @@ function wallHTML(p,art,size,opts={}){
     const w=size?size.w:art.w,h=size?size.h:art.h;
     const lit=ph&&p.light&&S.lightOn!==false;
     const wp=w/p.wallW*100,hp=h/p.wallH*100;const pos=clampPos(getPos(p,art.id),wp/200,hp/200);
-    let ad=`<div class="art${opts.drag?' drag':''}" ${opts.drag?`id="dragart" data-hu="${wp/200}" data-hv="${hp/200}"`:''} style="left:${pos.u*100}%;top:${pos.v*100}%;width:${wp.toFixed(2)}%;height:${hp.toFixed(2)}%${lit?`;filter:brightness(${p.light.b.toFixed(2)})`:''}">${svgArt(art)}${lit?`<span class="tint" style="background:rgb(${p.light.t.join(',')})"></span>`:''}</div>`;
-    if(opts.drag)ad=`<div class="gl h" id="glh" style="top:${pos.v*100}%"></div><div class="gl v" id="glv" style="left:${pos.u*100}%;top:${pos.v*100+hp/2}%"></div>`+ad;
+    let ad=`<div class="art${opts.drag?' drag':''}" ${opts.drag?`data-aid="${art.id}" data-hu="${wp/200}" data-hv="${hp/200}"`:''} style="left:${pos.u*100}%;top:${pos.v*100}%;width:${wp.toFixed(2)}%;height:${hp.toFixed(2)}%${lit?`;filter:brightness(${p.light.b.toFixed(2)})`:''}">${svgArt(art)}${lit?`<span class="tint" style="background:rgb(${p.light.t.join(',')})"></span>`:''}</div>`;
+    if(opts.drag)ad=`<div class="gl h" style="top:${pos.v*100}%"></div><div class="gl v" style="left:${pos.u*100}%;top:${pos.v*100+hp/2}%"></div>`+ad;
     inner+=persp?`<div class="plane" data-c='${JSON.stringify(p.corners)}'>${ad}</div>`:ad;
     inner+=`<span class="dims">${D(w,h)} מ״מ על קיר ${D(p.wallW,p.wallH)}</span>`;
   }
-  const tools=opts.drag?`<div class="wtools"><button class="iconbtn" data-act="zoomIn" aria-label="הגדלה">${I.plus}</button><button class="iconbtn" data-act="zoomOut" aria-label="הקטנה"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button><button class="iconbtn" data-act="fullWall" aria-label="${S._full?'הקטנת התצוגה':'תצוגה גדולה'}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button></div><span class="hchip" id="hchip">מרכז היצירה <b id="hcm">${Math.round((1-getPos(p,art.id).v)*p.wallH/10)}</b> ס״מ מהרצפה</span>`:'';
-  return `<div class="wallfit" style="position:relative;${opts.fill?'flex:1;min-height:0':'height:'+(opts.maxH||'40vh')}"><div class="wall" data-r="${ratio2}">${inner}</div>${tools}</div>`;
+  const chip=opts.drag?`<span class="hchip">מרכז היצירה <b class="hcm">${art?Math.round((1-clampPos(getPos(p,art.id),0,0).v)*p.wallH/10):''}</b> ס״מ מהרצפה</span>`:'';
+  const tools=opts.tools?`<div class="wtools"><button class="iconbtn" data-act="zoomIn" aria-label="הגדלה">${I.plus}</button><button class="iconbtn" data-act="zoomOut" aria-label="הקטנה"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button><button class="iconbtn" data-act="fullWall" aria-label="${S._full?'הקטנת התצוגה':'תצוגה גדולה'}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button></div>`:'';
+  return `<div class="wallfit${opts.tools?' showgl':''}" style="position:relative;${opts.fill?'flex:1;min-height:0':'height:'+(opts.maxH||'40vh')}"><div class="wall" data-r="${ratio2}">${inner}</div>${tools}${chip}</div>`;
 }
 function computeLight(p,done){const src=photos[p.id];if(!src)return;const im=new Image();im.onload=()=>{const W=80,H=Math.max(1,Math.round(80/(im.width/im.height)));const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(im,0,0,W,H);let d;try{d=x.getImageData(0,0,W,H).data}catch(e){return}
   const cs=p.corners||[[0,0],[1,0],[1,1],[0,1]];const u0=Math.min(...cs.map(q=>q[0])),u1=Math.max(...cs.map(q=>q[0])),v0=Math.min(...cs.map(q=>q[1])),v1=Math.max(...cs.map(q=>q[1]));
   let r=0,g=0,b=0,n=0;for(let yy=Math.floor(v0*H);yy<Math.ceil(v1*H);yy++)for(let xx=Math.floor(u0*W);xx<Math.ceil(u1*W);xx++){const i=(yy*W+xx)*4;r+=d[i];g+=d[i+1];b+=d[i+2];n++}
   if(!n)return;r/=n;g/=n;b/=n;const lum=.2126*r+.7152*g+.0722*b;const m=Math.max(r,g,b)||1;
   p.light={b:Math.min(1.08,Math.max(.55,lum/205)),t:[r,g,b].map(v=>Math.round(v/m*255))};save();done&&done()};im.src=src}
-function getPos(p,id){return (p.pos&&p.pos[id])||{u:.5,v:.44}}
+function defCenter(p){return p.center||{u:.5,v:Math.min(.85,Math.max(.15,1-1450/p.wallH))}}
+function getPos(p,id){return (p.pos&&p.pos[id])||defCenter(p)}
 function clampPos(q,hu,hv){return {u:Math.min(1-hu,Math.max(hu,q.u)),v:Math.min(1-hv,Math.max(hv,q.v))}}
 function coef(c){const [x0,y0]=c[0],[x1,y1]=c[1],[x2,y2]=c[2],[x3,y3]=c[3];const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;let g=0,h=0;if(!(Math.abs(dx3)<1e-9&&Math.abs(dy3)<1e-9)){const den=dx1*dy2-dx2*dy1;g=(dx3*dy2-dx2*dy3)/den;h=(dx1*dy3-dx3*dy1)/den}return {a:x1-x0+g*x1,b:x3-x0+h*x3,c:x0,d:y1-y0+g*y1,e:y3-y0+h*y3,f:y0,g,h}}
 function screenToWall(wall,e){const r=wall.getBoundingClientRect();const W=wall.offsetWidth,H=wall.offsetHeight;const X=(e.clientX-r.left)/r.width*W,Y=(e.clientY-r.top)/r.height*H;const pl=wall.querySelector('.plane');
   if(!pl)return {u:X/W,v:Y/H};const k=coef(JSON.parse(pl.dataset.c).map(([u,v])=>[u*W,v*H]));
   const A1=k.a-k.g*X,B1=k.b-k.h*X,C1=X-k.c,A2=k.d-k.g*Y,B2=k.e-k.h*Y,C2=Y-k.f;const det=A1*B2-A2*B1;return {u:(C1*B2-C2*B1)/det,v:(A1*C2-A2*C1)/det}}
-function bindDrag(){const el=$('#dragart');if(!el)return;const wall=el.closest('.wall');const p=proj();const id=S._art;const hu=+el.dataset.hu,hv=+el.dataset.hv;let on=false,off={u:0,v:0},cur=clampPos(getPos(p,id),hu,hv);
-  el.addEventListener('pointerdown',e=>{on=true;el.setPointerCapture(e.pointerId);const q=screenToWall(wall,e);off={u:cur.u-q.u,v:cur.v-q.v};e.preventDefault()});
-  el.addEventListener('pointermove',e=>{if(!on)return;const q=screenToWall(wall,e);cur=clampPos({u:q.u+off.u,v:q.v+off.v},hu,hv);
-    el.style.left=cur.u*100+'%';el.style.top=cur.v*100+'%';const gh=$('#glh'),gv=$('#glv');gh.style.top=cur.v*100+'%';gv.style.left=cur.u*100+'%';gv.style.top=(cur.v+hv)*100+'%';$('#hcm').textContent=Math.round((1-cur.v)*p.wallH/10)});
-  const up=()=>{if(!on)return;on=false;p.pos=p.pos||{};p.pos[id]=cur;save()};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
-  applyZoom()}
-function applyZoom(){const el=$('#dragart');if(!el)return;const wall=el.closest('.wall');const z=S._zoom||1;wall.style.transform='';const r=wall.getBoundingClientRect(),a=el.getBoundingClientRect();wall.style.transformOrigin=((a.left+a.width/2-r.left)/r.width*100)+'% '+((a.top+a.height/2-r.top)/r.height*100)+'%';wall.style.transform=z>1?`scale(${z})`:'';wall.style.transition='transform .2s'}
+function bindDragEl(el,onTap){if(!el)return;const wall=el.closest('.wall'),wf=el.closest('.wallfit');const p=proj();const id=+el.dataset.aid;const hu=+el.dataset.hu,hv=+el.dataset.hv;let on=false,moved=false,sx=0,sy=0,off={u:0,v:0},cur=clampPos(getPos(p,id),hu,hv);
+  el.addEventListener('pointerdown',e=>{e.stopPropagation();on=true;moved=false;sx=e.clientX;sy=e.clientY;el.setPointerCapture(e.pointerId);const q=screenToWall(wall,e);off={u:cur.u-q.u,v:cur.v-q.v};e.preventDefault()});
+  el.addEventListener('pointermove',e=>{if(!on)return;if(Math.abs(e.clientX-sx)>5||Math.abs(e.clientY-sy)>5){moved=true;wf.classList.add('dragging')}if(!moved)return;const q=screenToWall(wall,e);cur=clampPos({u:q.u+off.u,v:q.v+off.v},hu,hv);
+    el.style.left=cur.u*100+'%';el.style.top=cur.v*100+'%';const gh=wall.querySelector('.gl.h'),gv=wall.querySelector('.gl.v');gh.style.top=cur.v*100+'%';gv.style.left=cur.u*100+'%';gv.style.top=(cur.v+hv)*100+'%';wf.querySelector('.hcm').textContent=Math.round((1-cur.v)*p.wallH/10)});
+  const up=e=>{if(!on)return;on=false;wf.classList.remove('dragging');if(!moved){onTap&&onTap();return}p.pos=p.pos||{};p.pos[id]=cur;save()};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',()=>{on=false;wf.classList.remove('dragging')})}
+function bindDrag(){const el=document.querySelector('.showgl .art.drag');if(!el)return;bindDragEl(el);applyZoom()}
+function applyZoom(){const el=document.querySelector('.showgl .art.drag');if(!el)return;const wall=el.closest('.wall');const z=S._zoom||1;wall.style.transform='';const r=wall.getBoundingClientRect(),a=el.getBoundingClientRect();wall.style.transformOrigin=((a.left+a.width/2-r.left)/r.width*100)+'% '+((a.top+a.height/2-r.top)/r.height*100)+'%';wall.style.transform=z>1?`scale(${z})`:'';wall.style.transition='transform .2s'}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;app.appendChild(t);setTimeout(()=>t.remove(),2400)}
 function overlay(html,cls=''){
   closeOverlay();const o=document.createElement('div');o.className='overlay '+cls;o.id='ov';o.innerHTML=html;app.appendChild(o);
@@ -446,7 +453,7 @@ V.taste=()=>`${top()}
 V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="projects">פרויקט: ${esc(p.name)}</button>`})}
  <div class="stack" style="margin-top:8px"><h1 style="font-size:24px">הקיר שלך</h1><p class="sub" style="margin:0">מצלמים את הקיר ישר מולו, ומזינים את המידות שלו. כך כל יצירה תופיע בגודל האמיתי.</p></div>
  <div style="margin-top:14px">${photos[p.id]&&p.photoR?cornerEditor(p):wallHTML(p,null,null,{maxH:'34vh'})}</div>
- ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div>`:''}
+ ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div><div style="font-size:14px;color:var(--b800);margin-top:2px">העיגול הכתום הוא מרכז היצירה: <b id="ccm">${Math.round((1-defCenter(p).v)*p.wallH/10)}</b> ס״מ מהרצפה. גוררים אותו למקום שבו תרצו לתלות.</div>`:''}
  <div class="ph-actions" style="margin-top:12px">
   <input type="file" id="fcam" accept="image/*" capture="environment" data-photo hidden>
   <input type="file" id="fgal" accept="image/*" data-photo hidden>
@@ -464,7 +471,7 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
 V.swipe=()=>{const p=proj();
  const right=`<div class="row" style="gap:6px"><button class="iconbtn" data-act="saved" data-tab="likes" aria-label="אהבתי (${p.likes.length})" style="color:var(--b700)">${I.heart}<span class="badge">${p.likes.length}</span></button>${S.mode==='together'?`<button class="iconbtn" data-act="saved" data-tab="matches" aria-label="מאצ׳ים (${p.matches.length})" style="color:var(--m700)">${I.pair}<span class="badge m">${p.matches.length}</span></button>`:''}</div>`;
  return `<div class="top"><button class="iconbtn" data-go="filter" aria-label="סינון">${I.filter}</button><div class="logo">${LOGO}</div>${right}</div>
- <div class="row" style="justify-content:space-between;margin-top:4px"><button class="pchip" data-go="wall">${I.wall}${esc(p.name)} · ${D(p.wallW,p.wallH)}</button><span style="font-size:13px;color:var(--n700)">גוררים ימינה = אהבתי</span></div>
+ <div class="row" style="justify-content:space-between;margin-top:4px"><button class="pchip" data-go="wall">${I.wall}${esc(p.name)} · ${D(p.wallW,p.wallH)}</button><span style="font-size:12px;color:var(--n700);text-align:left;line-height:1.35">גוררים את היצירה = מיקום<br>מחליקים את הכרטיס = בחירה</span></div>
  <div class="deck" id="deck"></div>
  <div class="actions">
   <button class="act yes" data-act="like" aria-label="אהבתי">${I.heart}</button>
@@ -481,7 +488,7 @@ V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=ARTIST
  const size=f==='orig'?{w:a.w,h:a.h}:(()=>{const pr=PRINTS.find(x=>x.k===f);return a.w>a.h?{w:pr.h,h:pr.w}:{w:pr.w,h:pr.h}})();
  const liked=p.likes.includes(a.id);
  return `${top({right:`<button class="iconbtn" data-act="toggleLike" aria-label="${liked?'הסרה מאהבתי':'אהבתי'}" style="color:${liked?'var(--b700)':'var(--n800)'}">${liked?I.heart:I.heartO}</button>`})}
- <div style="margin-top:6px">${wallHTML(p,a,size,{maxH:S._full?'68vh':'40vh',drag:true})}</div>
+ <div style="margin-top:6px">${wallHTML(p,a,size,{maxH:S._full?'68vh':'40vh',drag:true,tools:true})}</div>
  <div class="row" style="justify-content:space-between;margin-top:6px"><span class="note" style="text-align:right">גוררים את היצירה כדי למקם אותה על הקיר</span>${photos[p.id]?`<span class="row" style="gap:8px;flex-shrink:0"><span style="font-size:13px;color:var(--n700)">התאמה לתאורה</span><button class="switch" role="switch" aria-checked="${S.lightOn!==false}" aria-label="התאמה לתאורה של התמונה" data-act="lightToggle"></button></span>`:''}</div>
  <div class="stack" style="margin-top:14px">
   <div><h1 style="font-size:24px">${a.t}</h1><p class="sub" style="margin-top:2px">${a.tech} · מקור ${D(a.w,a.h)} מ״מ</p></div>
@@ -527,16 +534,20 @@ function bind(root){
   }));
   const pm=root.querySelector('#pm');if(pm)pm.oninput=()=>{S.priceMax=+pm.value;$('#pmv').textContent='₪'+pm.value;save()};
   root.querySelectorAll('[data-photo]').forEach(inp=>inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)loadPhoto(f)});
-  ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save()}else{toast('מזינים מספר בין 300 ל-20000 מ״מ');el.value=id==='ww'?p.wallW:p.wallH}}});
+  ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save();const cm=$('.cmark');if(cm){const c=defCenter(p);cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';$('#ccm').textContent=Math.round((1-c.v)*p.wallH/10)}}else{toast('מזינים מספר בין 300 ל-20000 מ״מ');el.value=id==='ww'?p.wallW:p.wallH}}});
 }
 
 /* ---------- corner editor ---------- */
-function cornerEditor(p){const c=p.corners;return `<div class="wallfit" style="height:40vh;overflow:visible;background:transparent"><div class="wall cedit" data-r="${p.photoR}" id="cedit"><img class="photo" src="${photos[p.id]}" style="object-fit:fill" alt="הקיר שלך"><svg class="cpoly" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="cpg" points="${c.map(x=>x[0]*100+','+x[1]*100).join(' ')}" fill="rgba(43,194,172,.18)" stroke="#2BC2AC" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>${c.map((x,i)=>`<span class="handle" data-i="${i}" aria-label="פינה ${i+1}" style="left:${x[0]*100}%;top:${x[1]*100}%"></span>`).join('')}</div></div>`}
+function cornerEditor(p){const c=p.corners;return `<div class="wallfit" style="height:40vh;overflow:visible;background:transparent"><div class="wall cedit" data-r="${p.photoR}" id="cedit"><img class="photo" src="${photos[p.id]}" style="object-fit:fill" alt="הקיר שלך"><svg class="cpoly" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="cpg" points="${c.map(x=>x[0]*100+','+x[1]*100).join(' ')}" fill="rgba(43,194,172,.18)" stroke="#2BC2AC" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div class="plane" data-c='${JSON.stringify(c)}'><span class="cmark" style="left:${defCenter(p).u*100}%;top:${defCenter(p).v*100}%" aria-label="מרכז היצירה"></span></div>${c.map((x,i)=>`<span class="handle" data-i="${i}" aria-label="פינה ${i+1}" style="left:${x[0]*100}%;top:${x[1]*100}%"></span>`).join('')}</div></div>`}
 function bindCorners(){const box=$('#cedit');if(!box)return;const p=proj();
   box.querySelectorAll('.handle').forEach(hd=>{let on=false;
     hd.addEventListener('pointerdown',e=>{on=true;hd.setPointerCapture(e.pointerId);e.preventDefault()});
     hd.addEventListener('pointermove',e=>{if(!on)return;const r=box.getBoundingClientRect();const u=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),v=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));const i=+hd.dataset.i;p.corners[i]=[u,v];hd.style.left=u*100+'%';hd.style.top=v*100+'%';$('#cpg').setAttribute('points',p.corners.map(x=>x[0]*100+','+x[1]*100).join(' '))});
-    const up=()=>{if(on){on=false;save();computeLight(p)}};hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up)})}
+    const up=()=>{if(on){on=false;save();computeLight(p);box.querySelector('.plane').dataset.c=JSON.stringify(p.corners);applyPlanes()}};hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up)});
+  const cm=box.querySelector('.cmark');let on=false;
+  cm.addEventListener('pointerdown',e=>{on=true;cm.setPointerCapture(e.pointerId);e.preventDefault()});
+  cm.addEventListener('pointermove',e=>{if(!on)return;const q=screenToWall(box,e);const c={u:Math.min(.95,Math.max(.05,q.u)),v:Math.min(.95,Math.max(.05,q.v))};p.center=c;cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';const t=$('#ccm');if(t)t.textContent=Math.round((1-c.v)*p.wallH/10)});
+  const cup=()=>{if(on){on=false;p.pos={};save()}};cm.addEventListener('pointerup',cup);cm.addEventListener('pointercancel',cup)}
 
 /* ---------- photo ---------- */
 function loadPhoto(file){
@@ -556,7 +567,7 @@ function loadPhoto(file){
 /* ---------- swipe ---------- */
 function cardHTML(a,cls){const p=proj();return `<div class="scard ${cls}" data-id="${a.id}">
   <span class="stamp like">אהבתי</span><span class="stamp nope">לא בשבילי</span>
-  ${wallHTML(p,a,null,{fill:true})}
+  ${wallHTML(p,a,null,{fill:true,drag:cls==='front'})}
   <div class="meta"><div style="min-width:0"><b style="font-weight:500;font-size:18px;display:block">${a.t}</b><span style="font-size:14px;color:var(--n700)">${ARTISTS[a.ar].name} · ${D(a.w,a.h)} מ״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
  </div>`}
 function drawDeck(){
@@ -568,6 +579,7 @@ function drawDeck(){
   el.querySelectorAll('.scard').forEach(cd=>{const wf=cd.querySelector('.wallfit');const r=+cd.querySelector('.wall').dataset.r;const mh=cd.querySelector('.meta').offsetHeight;
     const h=Math.min(el.clientHeight-mh-4,cd.clientWidth/r);wf.style.flex='none';wf.style.height=Math.max(160,h)+'px';cd.style.top=Math.max(0,(el.clientHeight-cd.offsetHeight)/2)+'px'});
   fitWalls();
+  bindDragEl(el.querySelector('.front .art.drag'),()=>{S._art=a.id;S._fmt=null;S._zoom=1;go('detail')});
   const c=el.querySelector('.front');let sx=0,sy=0,dx=0,dy=0,down=false,moved=false;
   c.addEventListener('pointerdown',e=>{down=true;moved=false;sx=e.clientX;sy=e.clientY;dx=dy=0;c.setPointerCapture(e.pointerId);c.style.transition='none'});
   c.addEventListener('pointermove',e=>{if(!down)return;dx=e.clientX-sx;dy=e.clientY-sy;if(Math.abs(dx)>6||Math.abs(dy)>6)moved=true;
