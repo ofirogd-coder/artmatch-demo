@@ -64,6 +64,15 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .handle{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:999px;touch-action:none;display:flex;align-items:center;justify-content:center;z-index:2;cursor:grab}
 .handle::after{content:"";width:22px;height:22px;border-radius:999px;background:var(--m500);border:3px solid #FCFAF7;box-shadow:0 2px 6px rgba(23,19,15,.45)}
 .cpoly{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.gl{position:absolute;pointer-events:none;border:0 dashed rgba(23,19,15,.6)}
+.gl.h{left:0;right:0;border-top-width:1.5px}
+.gl.v{bottom:0;border-left-width:1.5px}
+.art.drag{pointer-events:auto;touch-action:none;cursor:grab}
+.wtools{position:absolute;top:10px;left:10px;display:flex;flex-direction:column;gap:8px;z-index:3}
+.wtools .iconbtn{background:rgba(252,250,247,.95);box-shadow:0 2px 8px rgba(23,19,15,.2)}
+.hchip{position:absolute;top:10px;right:10px;background:rgba(252,250,247,.95);color:var(--n900);font-size:13px;padding:6px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(23,19,15,.15);z-index:3}
+.art{position:absolute}
+.tint{position:absolute;inset:0;mix-blend-mode:multiply;opacity:.35;pointer-events:none}
 .plane{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;pointer-events:none}
 .ph-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .upl{position:relative;min-height:52px;border-radius:16px;border:1.5px solid var(--n600);background:var(--n50);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;font-size:15px}
@@ -308,12 +317,34 @@ function wallHTML(p,art,size,opts={}){
   let inner=ph?`<img class="photo" src="${ph}" alt="הקיר שלך" ${persp?'style="object-fit:fill"':''}>`:`<div class="floor"></div>`;
   if(art){
     const w=size?size.w:art.w,h=size?size.h:art.h;
-    const ad=`<div class="art" style="width:${(w/p.wallW*100).toFixed(2)}%;height:${(h/p.wallH*100).toFixed(2)}%">${svgArt(art)}</div>`;
+    const lit=ph&&p.light&&S.lightOn!==false;
+    const wp=w/p.wallW*100,hp=h/p.wallH*100;const pos=clampPos(getPos(p,art.id),wp/200,hp/200);
+    let ad=`<div class="art${opts.drag?' drag':''}" ${opts.drag?`id="dragart" data-hu="${wp/200}" data-hv="${hp/200}"`:''} style="left:${pos.u*100}%;top:${pos.v*100}%;width:${wp.toFixed(2)}%;height:${hp.toFixed(2)}%${lit?`;filter:brightness(${p.light.b.toFixed(2)})`:''}">${svgArt(art)}${lit?`<span class="tint" style="background:rgb(${p.light.t.join(',')})"></span>`:''}</div>`;
+    if(opts.drag)ad=`<div class="gl h" id="glh" style="top:${pos.v*100}%"></div><div class="gl v" id="glv" style="left:${pos.u*100}%;top:${pos.v*100+hp/2}%"></div>`+ad;
     inner+=persp?`<div class="plane" data-c='${JSON.stringify(p.corners)}'>${ad}</div>`:ad;
     inner+=`<span class="dims">${D(w,h)} מ״מ על קיר ${D(p.wallW,p.wallH)}</span>`;
   }
-  return `<div class="wallfit" style="${opts.fill?'flex:1;min-height:0':'height:'+(opts.maxH||'40vh')}"><div class="wall" data-r="${ratio2}">${inner}</div></div>`;
+  const tools=opts.drag?`<div class="wtools"><button class="iconbtn" data-act="zoomIn" aria-label="הגדלה">${I.plus}</button><button class="iconbtn" data-act="zoomOut" aria-label="הקטנה"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button><button class="iconbtn" data-act="fullWall" aria-label="${S._full?'הקטנת התצוגה':'תצוגה גדולה'}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button></div><span class="hchip" id="hchip">מרכז היצירה <b id="hcm">${Math.round((1-getPos(p,art.id).v)*p.wallH/10)}</b> ס״מ מהרצפה</span>`:'';
+  return `<div class="wallfit" style="position:relative;${opts.fill?'flex:1;min-height:0':'height:'+(opts.maxH||'40vh')}"><div class="wall" data-r="${ratio2}">${inner}</div>${tools}</div>`;
 }
+function computeLight(p,done){const src=photos[p.id];if(!src)return;const im=new Image();im.onload=()=>{const W=80,H=Math.max(1,Math.round(80/(im.width/im.height)));const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.drawImage(im,0,0,W,H);let d;try{d=x.getImageData(0,0,W,H).data}catch(e){return}
+  const cs=p.corners||[[0,0],[1,0],[1,1],[0,1]];const u0=Math.min(...cs.map(q=>q[0])),u1=Math.max(...cs.map(q=>q[0])),v0=Math.min(...cs.map(q=>q[1])),v1=Math.max(...cs.map(q=>q[1]));
+  let r=0,g=0,b=0,n=0;for(let yy=Math.floor(v0*H);yy<Math.ceil(v1*H);yy++)for(let xx=Math.floor(u0*W);xx<Math.ceil(u1*W);xx++){const i=(yy*W+xx)*4;r+=d[i];g+=d[i+1];b+=d[i+2];n++}
+  if(!n)return;r/=n;g/=n;b/=n;const lum=.2126*r+.7152*g+.0722*b;const m=Math.max(r,g,b)||1;
+  p.light={b:Math.min(1.08,Math.max(.55,lum/205)),t:[r,g,b].map(v=>Math.round(v/m*255))};save();done&&done()};im.src=src}
+function getPos(p,id){return (p.pos&&p.pos[id])||{u:.5,v:.44}}
+function clampPos(q,hu,hv){return {u:Math.min(1-hu,Math.max(hu,q.u)),v:Math.min(1-hv,Math.max(hv,q.v))}}
+function coef(c){const [x0,y0]=c[0],[x1,y1]=c[1],[x2,y2]=c[2],[x3,y3]=c[3];const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;let g=0,h=0;if(!(Math.abs(dx3)<1e-9&&Math.abs(dy3)<1e-9)){const den=dx1*dy2-dx2*dy1;g=(dx3*dy2-dx2*dy3)/den;h=(dx1*dy3-dx3*dy1)/den}return {a:x1-x0+g*x1,b:x3-x0+h*x3,c:x0,d:y1-y0+g*y1,e:y3-y0+h*y3,f:y0,g,h}}
+function screenToWall(wall,e){const r=wall.getBoundingClientRect();const W=wall.offsetWidth,H=wall.offsetHeight;const X=(e.clientX-r.left)/r.width*W,Y=(e.clientY-r.top)/r.height*H;const pl=wall.querySelector('.plane');
+  if(!pl)return {u:X/W,v:Y/H};const k=coef(JSON.parse(pl.dataset.c).map(([u,v])=>[u*W,v*H]));
+  const A1=k.a-k.g*X,B1=k.b-k.h*X,C1=X-k.c,A2=k.d-k.g*Y,B2=k.e-k.h*Y,C2=Y-k.f;const det=A1*B2-A2*B1;return {u:(C1*B2-C2*B1)/det,v:(A1*C2-A2*C1)/det}}
+function bindDrag(){const el=$('#dragart');if(!el)return;const wall=el.closest('.wall');const p=proj();const id=S._art;const hu=+el.dataset.hu,hv=+el.dataset.hv;let on=false,off={u:0,v:0},cur=clampPos(getPos(p,id),hu,hv);
+  el.addEventListener('pointerdown',e=>{on=true;el.setPointerCapture(e.pointerId);const q=screenToWall(wall,e);off={u:cur.u-q.u,v:cur.v-q.v};e.preventDefault()});
+  el.addEventListener('pointermove',e=>{if(!on)return;const q=screenToWall(wall,e);cur=clampPos({u:q.u+off.u,v:q.v+off.v},hu,hv);
+    el.style.left=cur.u*100+'%';el.style.top=cur.v*100+'%';const gh=$('#glh'),gv=$('#glv');gh.style.top=cur.v*100+'%';gv.style.left=cur.u*100+'%';gv.style.top=(cur.v+hv)*100+'%';$('#hcm').textContent=Math.round((1-cur.v)*p.wallH/10)});
+  const up=()=>{if(!on)return;on=false;p.pos=p.pos||{};p.pos[id]=cur;save()};el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+  applyZoom()}
+function applyZoom(){const el=$('#dragart');if(!el)return;const wall=el.closest('.wall');const z=S._zoom||1;wall.style.transform='';const r=wall.getBoundingClientRect(),a=el.getBoundingClientRect();wall.style.transformOrigin=((a.left+a.width/2-r.left)/r.width*100)+'% '+((a.top+a.height/2-r.top)/r.height*100)+'%';wall.style.transform=z>1?`scale(${z})`:'';wall.style.transition='transform .2s'}
 function toast(msg){const t=document.createElement('div');t.className='toast';t.setAttribute('role','status');t.textContent=msg;app.appendChild(t);setTimeout(()=>t.remove(),2400)}
 function overlay(html,cls=''){
   closeOverlay();const o=document.createElement('div');o.className='overlay '+cls;o.id='ov';o.innerHTML=html;app.appendChild(o);
@@ -448,7 +479,8 @@ V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=ARTIST
  const size=f==='orig'?{w:a.w,h:a.h}:(()=>{const pr=PRINTS.find(x=>x.k===f);return a.w>a.h?{w:pr.h,h:pr.w}:{w:pr.w,h:pr.h}})();
  const liked=p.likes.includes(a.id);
  return `${top({right:`<button class="iconbtn" data-act="toggleLike" aria-label="${liked?'הסרה מאהבתי':'אהבתי'}" style="color:${liked?'var(--b700)':'var(--n800)'}">${liked?I.heart:I.heartO}</button>`})}
- <div style="margin-top:6px">${wallHTML(p,a,size,{maxH:'36vh'})}</div>
+ <div style="margin-top:6px">${wallHTML(p,a,size,{maxH:S._full?'68vh':'40vh',drag:true})}</div>
+ <div class="row" style="justify-content:space-between;margin-top:6px"><span class="note" style="text-align:right">גוררים את היצירה כדי למקם אותה על הקיר</span>${photos[p.id]?`<span class="row" style="gap:8px;flex-shrink:0"><span style="font-size:13px;color:var(--n700)">התאמה לתאורה</span><button class="switch" role="switch" aria-checked="${S.lightOn!==false}" aria-label="התאמה לתאורה של התמונה" data-act="lightToggle"></button></span>`:''}</div>
  <div class="stack" style="margin-top:14px">
   <div><h1 style="font-size:24px">${a.t}</h1><p class="sub" style="margin-top:2px">${a.tech} · מקור ${D(a.w,a.h)} מ״מ</p></div>
   <div class="field"><label>פורמט (מתעדכן על הקיר)</label>
@@ -469,7 +501,8 @@ function render(){
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
   bind(app);
   if(name==='swipe')drawDeck();
-  const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();
+  const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
+  {const q=proj();if(q&&photos[q.id]&&!q.light&&q.photoR)computeLight(q,()=>{if(['swipe','detail'].includes(cur()))render()})}
   const pp=proj();if(name==='wall'&&pp&&photos[pp.id]&&!pp.photoR){const im=new Image();im.onload=()=>{pp.photoR=im.width/im.height;pp.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();render()};im.src=photos[pp.id]}
 }
 function fitWalls(){document.querySelectorAll('.wallfit').forEach(f=>{const w=f.querySelector('.wall');const r=+w.dataset.r;const W=f.clientWidth,H=f.clientHeight;if(!W||!H)return;let ww=W,hh=W/r;if(hh>H){hh=H;ww=H*r}w.style.width=ww+'px';w.style.height=hh+'px'});applyPlanes()}
@@ -485,7 +518,7 @@ function bind(root){
     if(k==='fp')S._firstProj=v;
     if(k==='mode'){S.mode=v;const iv=$('#invite');if(iv)iv.hidden=v!=='together';save()}
     if(k==='orient'){S.orient=v;save()}
-    if(k==='fmt'){S._fmt=v;render()}
+    if(k==='fmt'){S._fmt=v;const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y}
   }));
   root.querySelectorAll('[data-multi]').forEach(g=>g.querySelectorAll('[data-val]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.val,i=S.styles.indexOf(v);if(i>=0)S.styles.splice(i,1);else S.styles.push(v);b.setAttribute('aria-pressed',i<0);save();
@@ -501,7 +534,7 @@ function bindCorners(){const box=$('#cedit');if(!box)return;const p=proj();
   box.querySelectorAll('.handle').forEach(hd=>{let on=false;
     hd.addEventListener('pointerdown',e=>{on=true;hd.setPointerCapture(e.pointerId);e.preventDefault()});
     hd.addEventListener('pointermove',e=>{if(!on)return;const r=box.getBoundingClientRect();const u=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),v=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));const i=+hd.dataset.i;p.corners[i]=[u,v];hd.style.left=u*100+'%';hd.style.top=v*100+'%';$('#cpg').setAttribute('points',p.corners.map(x=>x[0]*100+','+x[1]*100).join(' '))});
-    const up=()=>{if(on){on=false;save()}};hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up)})}
+    const up=()=>{if(on){on=false;save();computeLight(p)}};hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up)})}
 
 /* ---------- photo ---------- */
 function loadPhoto(file){
@@ -512,7 +545,7 @@ function loadPhoto(file){
     const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
     c.getContext('2d').drawImage(img,0,0,c.width,c.height);
     let d;try{d=c.toDataURL('image/jpeg',.78)}catch(e){d=url}
-    photos[p.id]=d;p.photo=d;p.photoR=c.width/c.height;p.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();URL.revokeObjectURL(url);render();toast('עכשיו גוררים את 4 העיגולים לפינות הקיר');
+    photos[p.id]=d;p.photo=d;p.photoR=c.width/c.height;p.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();URL.revokeObjectURL(url);render();computeLight(p);toast('עכשיו גוררים את 4 העיגולים לפינות הקיר');
   };
   img.onerror=()=>toast('לא הצלחנו לפתוח את הקובץ. נסו תמונה אחרת');
   img.src=url;
@@ -582,6 +615,10 @@ function showRecal(){
 /* ---------- actions ---------- */
 const A={
   back:()=>back(),
+  lightToggle:()=>{S.lightOn=S.lightOn===false;save();const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y},
+  zoomIn:()=>{S._zoom=Math.min(3,(S._zoom||1)+.5);applyZoom()},
+  zoomOut:()=>{S._zoom=Math.max(1,(S._zoom||1)-.5);applyZoom()},
+  fullWall:()=>{S._full=!S._full;const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y},
   resetCorners:()=>{const p=proj();p.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();render()},
   close:()=>closeOverlay(),
   login:()=>{S.registered=true;save();if(!S.projects.length){toast('בדמו אין עדיין פרויקטים, פותחים ראשון');go('about')}else go('projects')},
@@ -618,7 +655,7 @@ const A={
   saved:b=>{S._tab=b.dataset.tab;go('saved')},
   tab:b=>{S._tab=b.dataset.tab;render()},
   backSwipe:()=>{if(stack.includes('swipe')){stack=stack.slice(0,stack.indexOf('swipe')+1);render()}else{buildDeck();go('swipe')}},
-  detail:b=>{S._art=+b.dataset.id;S._fmt=null;go('detail')},
+  detail:b=>{S._art=+b.dataset.id;S._fmt=null;S._zoom=1;go('detail')},
   matchView:b=>{closeOverlay();S._art=+b.dataset.id;S._fmt=null;go('detail')},
   restartDeck:()=>{proj().seen=[];save();buildDeck();render()},
   recalFilter:()=>{rejectStreak=0;closeOverlay();go('filter')},
