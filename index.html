@@ -510,6 +510,7 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
  <div class="stack" style="margin-top:8px"><h1 style="font-size:24px">הקיר שלך</h1><p class="sub" style="margin:0">מצלמים את הקיר ישר מולו, ומזינים את המידות שלו. כך כל יצירה תופיע בגודל האמיתי.</p></div>
  <div style="margin-top:14px">${photos[p.id]&&p.photoR?cornerEditor(p):wallHTML(p,null,null,{maxH:'34vh'})}</div>
  ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div><button class="btn soft" data-act="detectWalls" style="min-height:44px;font-size:15px;margin-top:6px">✨ זיהוי קיר אוטומטי (ניסיוני)</button>${p.occ?`<div class="row" style="justify-content:space-between;margin-top:8px;gap:10px"><span style="font-size:14px;color:var(--n800)">זוהו מול הקיר: ${esc((p.occLabels||[]).join(', '))}. היצירה תוצג מאחוריהם.</span><button class="switch" role="switch" aria-checked="${p.occOn!==false}" aria-label="יצירה מאחורי חפצים" data-act="occToggle"></button></div>`:''}<div style="font-size:14px;color:var(--b800);margin-top:2px">העיגול הכתום הוא מרכז היצירה: <b id="ccm">${Math.round((1-defCenter(p).v)*p.wallH/10)}</b> ס״מ מהרצפה. גוררים אותו למקום שבו תרצו לתלות.</div>`:''}
+ <div style="margin-top:12px;display:flex;gap:10px;align-items:flex-start;background:var(--m100);border-radius:14px;padding:10px 12px;color:var(--m800);font-size:14px;line-height:1.45"><span aria-hidden="true" style="font-size:18px;line-height:1">☀️</span><span><b style="font-weight:500">טיפ לצילום:</b> עומדים מול הקיר ומצלמים ישר, באור יום מלא, כך שכל הקיר נכנס לתמונה.</span></div>
  <div class="ph-actions" style="margin-top:12px">
   <input type="file" id="fcam" accept="image/*" capture="environment" data-photo hidden>
   <input type="file" id="fgal" accept="image/*" data-photo hidden>
@@ -574,7 +575,7 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 23 · 07.11 22:52</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 24 · 07.11 22:53</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
