@@ -217,6 +217,7 @@ const I = {
 /* ---------- original sample artworks (drawn in SVG) ---------- */
 function rng(seed){let s=seed*9301+49297;return()=>{s=(s*9301+49297)%233280;return s/233280}}
 function svgArt(a){
+  if(a.img)return `<img src="${a.img}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" style="display:block;width:100%;height:100%;object-fit:cover">`;
   const W=100,H=Math.round(100*a.h/a.w),R=rng(a.id+3),p=a.pal;let b='';
   switch(a.kind){
     case 'sunset':
@@ -275,6 +276,30 @@ const ARTS = [
 ];
 const PRINTS=[{k:'A3',w:297,h:420,p:180},{k:'A2',w:420,h:594,p:260},{k:'50/70',w:500,h:700,p:340}];
 const PARTNER_LIKES=[2,5,9,13,6];
+const PL=a=>a.museum?(a.id%6===0):PARTNER_LIKES.includes(a.id);
+function AR(a){return a.museum?{name:a.artist||'אמן/ית לא ידוע/ה',city:a.date||'',bio:a.credit,site:a.page,ig:''}:ARTISTS[a.ar]}
+/* ---------- public-domain museum artworks (Art Institute of Chicago, CC0) ---------- */
+let MUSEUM_READY=false;
+const MQ=[['landscape','נוף'],['seascape','נוף'],['mountains','נוף'],['abstract','מופשט'],['abstraction','מופשט'],['geometric','מינימליסטי'],['minimal','מינימליסטי'],['silhouette','מינימליסטי'],['portrait','פיגורטיבי'],['figure','פיגורטיבי'],['dance','פיגורטיבי'],['photograph','צילום'],['street','צילום'],['flowers','טבע ובוטני'],['botanical','טבע ובוטני'],['birds','טבע ובוטני'],['still life','טבע ובוטני'],['woodblock','נוף'],['impressionism','נוף'],['city','צילום']];
+const MKEY='artmatch-museum-v1';
+function addMuseum(list){const seen=new Set(ARTS.map(a=>a.id));list.forEach(m=>{const id=1000000+m.id;if(seen.has(id))return;seen.add(id);ARTS.push({id,museum:true,t:m.t,artist:m.ar,date:m.d,w:m.w,h:m.h,st:[m.s],tech:m.tech||'',img:`https://www.artic.edu/iiif/2/${m.img}/full/600,/0/default.jpg`,page:`https://www.artic.edu/artworks/${m.id}`,credit:'Art Institute of Chicago · נחלת הכלל (CC0)'})});MUSEUM_READY=ARTS.some(a=>a.museum)}
+function parseDims(r){const dd=(r.dimensions_detail||[]).find(x=>x&&x.width&&x.height);if(dd)return {w:Math.round(dd.width*10),h:Math.round(dd.height*10)};
+  const m=/([\d.]+)\s*[×x]\s*([\d.]+)\s*cm/.exec(r.dimensions||'');if(m)return {h:Math.round(parseFloat(m[1])*10),w:Math.round(parseFloat(m[2])*10)};return null}
+async function loadMuseum(){try{const c=JSON.parse(localStorage.getItem(MKEY)||'null');if(c&&c.length>200){addMuseum(c);return}}catch(e){}
+  const out=[];const flds='id,title,artist_title,date_display,image_id,dimensions,dimensions_detail,classification_title,medium_display';
+  const okCls=/paint|print|draw|photo|watercolor|woodblock|lithograph|etching|engraving|poster|gouache|pastel/i;
+  const one=async([q,st],page)=>{const ctl=new AbortController();const t=setTimeout(()=>ctl.abort(),15000);
+    try{const u=`https://api.artic.edu/api/v1/artworks/search?q=${encodeURIComponent(q)}&query[term][is_public_domain]=true&fields=${flds}&limit=100&page=${page}`;
+      const r=await fetch(u,{signal:ctl.signal});if(!r.ok)return;const j=await r.json();
+      (j.data||[]).forEach(x=>{if(!x.image_id||!okCls.test(x.classification_title||''))return;const d=parseDims(x);if(!d||d.w<80||d.h<80||d.w>4000||d.h>4000)return;
+        out.push({id:x.id,t:x.title,ar:x.artist_title,d:x.date_display,img:x.image_id,w:d.w,h:d.h,s:st,tech:x.medium_display?String(x.medium_display).slice(0,60):''})})}catch(e){}finally{clearTimeout(t)}};
+  const jobs=[];MQ.forEach(q=>{jobs.push([q,1]);jobs.push([q,2])});
+  let i=0;const worker=async()=>{while(i<jobs.length){const [q,pg]=jobs[i++];await one(q,pg)}};
+  await Promise.all([worker(),worker(),worker()]);
+  {const u=new Map();out.forEach(m=>u.set(m.id,m));out.length=0;u.forEach(m=>out.push(m))}
+  if(out.length){addMuseum(out);try{localStorage.setItem(MKEY,JSON.stringify(out))}catch(e){}}
+}
+const museumPromise=loadMuseum().then(()=>{if(MUSEUM_READY&&cur()==='swipe'&&!deck.some(a=>a.museum)){buildDeck();render()}}).catch(()=>{});
 const STYLES=['מופשט','נוף','מינימליסטי','פיגורטיבי','צילום','טבע ובוטני'];
 const TASTE=[
  ['מונה ליזה','דה וינצ׳י','#8A6E4B','#F2E6CF','פיגורטיבי'],['הגל הגדול','הוקוסאי','#2F5B7C','#E9E1CF','נוף'],['ליל כוכבים','ואן גוך','#253C78','#F4D35E','נוף'],
@@ -365,12 +390,12 @@ function closeOverlay(){const o=$('#ov');if(o)o.remove()}
 
 function buildDeck(){
   const p=proj();const tasteStyles=S.taste.map(i=>TASTE[i][4]);
-  let list=ARTS.filter(a=>!p.seen.includes(a.id));
+  let list=ARTS.filter(a=>!p.seen.includes(a.id)&&(!MUSEUM_READY||a.museum));
   if(S.orient==='portrait')list=list.filter(a=>a.h>=a.w);
   if(S.orient==='landscape')list=list.filter(a=>a.w>=a.h);
   if(S.priceOn)list=list.filter(a=>minPrice(a)<=S.priceMax);
   if(S.sizeOn)list=list.filter(a=>(!S.minW||a.w>=S.minW)&&(!S.maxW||a.w<=S.maxW)&&(!S.minH||a.h>=S.minH)&&(!S.maxH||a.h<=S.maxH));
-  list.forEach(a=>{a._s=0;a.st.forEach(s=>{if(S.styles.includes(s))a._s+=3;if(tasteStyles.includes(s))a._s+=2});if(S.mode==='together'&&PARTNER_LIKES.includes(a.id))a._s+=1;a._s+=(a.id%5)/10});
+  list.forEach(a=>{a._s=0;a.st.forEach(s=>{if(S.styles.includes(s))a._s+=3;if(tasteStyles.includes(s))a._s+=2});if(S.mode==='together'&&PL(a))a._s+=1;a._s+=((a.id*7919)%97)/100});
   list.sort((x,y)=>y._s-x._s);
   deck=list;di=0;
 }
@@ -491,9 +516,9 @@ V.saved=()=>{const p=proj();const tab=S._tab||'likes';const ids=tab==='likes'?p.
  return `${top()}
  <h1 style="font-size:24px;margin-top:6px">${esc(p.name)}</h1>
  <div class="tabs" role="tablist" style="margin-top:12px"><button class="tab" role="tab" aria-selected="${tab==='likes'}" data-act="tab" data-tab="likes">אהבתי (${p.likes.length})</button><button class="tab" role="tab" aria-selected="${tab==='matches'}" data-act="tab" data-tab="matches">מאצ׳ים (${p.matches.length})</button></div>
- ${ids.length?`<div class="sgrid" style="margin-top:14px">${ids.map(id=>{const a=ARTS.find(x=>x.id===id);const r=a.w/a.h;return `<button class="sitem" data-act="detail" data-id="${id}"><span class="th"><span style="display:block;${r>=1?'width:80%;':'height:80%;'}aspect-ratio:${a.w}/${a.h};box-shadow:0 3px 8px rgba(0,0,0,.2)">${svgArt(a)}</span></span><b style="font-weight:500;font-size:14px">${a.t}</b><span style="font-size:12px;color:var(--n700)">${ARTISTS[a.ar].name} · מ-₪${minPrice(a)}</span></button>`}).join('')}</div>`
+ ${ids.length?`<div class="sgrid" style="margin-top:14px">${ids.filter(id=>ARTS.some(x=>x.id===id)).map(id=>{const a=ARTS.find(x=>x.id===id);const r=a.w/a.h;return `<button class="sitem" data-act="detail" data-id="${id}"><span class="th"><span style="display:block;${r>=1?'width:80%;':'height:80%;'}aspect-ratio:${a.w}/${a.h};box-shadow:0 3px 8px rgba(0,0,0,.2)">${svgArt(a)}</span></span><b style="font-weight:500;font-size:14px">${a.t}</b><span style="font-size:12px;color:var(--n700)">${AR(a).name} · מ-₪${minPrice(a)}</span></button>`}).join('')}</div>`
  :`<div class="empty">${tab==='likes'?'עוד לא סימנת ״אהבתי״. חוזרים להחליף?':(S.mode==='together'?'מאץ׳ קורה כששניכם אוהבים אותה יצירה.':'מאצ׳ים יש רק בבחירה ״ביחד״.')}<button class="btn soft" style="width:auto" data-act="backSwipe">להחלפה</button></div>`}`};
-V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=ARTISTS[a.ar];const f=S._fmt||'orig';
+V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=AR(a);const f=S._fmt||'orig';
  const size=f==='orig'?{w:a.w,h:a.h}:(()=>{const pr=PRINTS.find(x=>x.k===f);return a.w>a.h?{w:pr.h,h:pr.w}:{w:pr.w,h:pr.h}})();
  const liked=p.likes.includes(a.id);
  return `${top({right:`<button class="iconbtn" data-act="toggleLike" aria-label="${liked?'הסרה מאהבתי':'אהבתי'}" style="color:${liked?'var(--b700)':'var(--n800)'}">${liked?I.heart:I.heartO}</button>`})}
@@ -504,11 +529,12 @@ V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=ARTIST
   <div class="field"><label>פורמט (מתעדכן על הקיר)</label>
    <div class="stack" style="gap:8px" data-group="fmt">
     ${PRINTS.map(x=>`<button class="fmt" aria-pressed="${f===x.k}" data-val="${x.k}"><span>הדפס ${x.k} · ${D(x.w,x.h)}</span><b style="font-weight:500">₪${x.p+off(a)}</b></button>`).join('')}
-    <button class="fmt" aria-pressed="${f==='orig'}" data-val="orig"><span>היצירה המקורית</span><span style="font-size:13px;color:var(--n700)">המחיר נמסר בפנייה</span></button>
+    <button class="fmt" aria-pressed="${f==='orig'}" data-val="orig"><span>${a.museum?'בגודל המקור':'היצירה המקורית'}</span><span style="font-size:13px;color:var(--n700)">${a.museum?'הדפס בגודל אמיתי':'המחיר נמסר בפנייה'}</span></button>
    </div></div>
   <div class="artist"><span class="avatar">${ar.name[0]}</span><span style="flex:1;min-width:0"><b style="font-weight:500;display:block">${ar.name} · ${ar.city}</b><span style="font-size:13px;color:var(--n700)">${ar.bio}</span></span></div>
-  <div class="row2"><button class="btn ghost" style="min-height:46px;font-size:15px" data-act="ext" data-v="${ar.site}">אתר האמן/ית</button><button class="btn ghost" style="min-height:46px;font-size:15px" data-act="ext" data-v="${ar.ig}">אינסטגרם</button></div>
-  <button class="btn" data-act="contact">פנייה ל${ar.name.split(' ')[0]}</button>
+  ${a.museum?`<a class="btn ghost" style="min-height:46px;font-size:15px;text-decoration:none" href="${a.page}" target="_blank" rel="noopener">לעמוד היצירה במוזיאון</a><p class="note" style="margin:0">יצירה מנחלת הכלל מאוסף Art Institute of Chicago, להמחשה בדמו בלבד. באפליקציה יופיעו כאן יצירות של אמנים.</p>`:''}
+  <div class="row2" ${a.museum?'hidden':''}><button class="btn ghost" style="min-height:46px;font-size:15px" data-act="ext" data-v="${ar.site}">אתר האמן/ית</button><button class="btn ghost" style="min-height:46px;font-size:15px" data-act="ext" data-v="${ar.ig}">אינסטגרם</button></div>
+  <button class="btn" data-act="contact">${a.museum?'לנסות פנייה (דמו)':'פנייה ל'+ar.name.split(' ')[0]}</button>
  </div>`};
 
 /* ---------- render ---------- */
@@ -578,7 +604,7 @@ function loadPhoto(file){
 function cardHTML(a,cls){const p=proj();return `<div class="scard ${cls}" data-id="${a.id}">
   <span class="stamp like">אהבתי</span><span class="stamp nope">לא בשבילי</span>
   ${wallHTML(p,a,null,{fill:true,drag:cls==='front'})}
-  <div class="meta"><div style="min-width:0"><b style="font-weight:500;font-size:18px;display:block">${a.t}</b><span style="font-size:14px;color:var(--n700)">${ARTISTS[a.ar].name} · ${D(a.w,a.h)} מ״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
+  <div class="meta"><div style="min-width:0"><b style="font-weight:500;font-size:18px;display:block">${a.t}</b><span style="font-size:14px;color:var(--n700)">${AR(a).name} · ${D(a.w,a.h)} מ״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
  </div>`}
 function drawDeck(){
   const el=$('#deck');if(!el)return;
@@ -607,7 +633,7 @@ function decide(like,c){
   let matched=false;
   if(!p.seen.includes(a.id))p.seen.push(a.id);
   if(like){if(!p.likes.includes(a.id))p.likes.push(a.id);rejectStreak=0;
-    if(S.mode==='together'&&PARTNER_LIKES.includes(a.id)&&!p.matches.includes(a.id)){p.matches.push(a.id);matched=true}}
+    if(S.mode==='together'&&PL(a)&&!p.matches.includes(a.id)){p.matches.push(a.id);matched=true}}
   else rejectStreak++;
   lastAction={id:a.id,like,matched,streak:rejectStreak};
   save();
@@ -686,15 +712,15 @@ const A={
   recalFilter:()=>{rejectStreak=0;closeOverlay();go('filter')},
   recalTaste:()=>{rejectStreak=0;S.taste=[];save();closeOverlay();go('taste')},
   recalKeep:()=>{rejectStreak=0;closeOverlay()},
-  toggleLike:()=>{const p=proj(),id=S._art;if(p.likes.includes(id)){p.likes=p.likes.filter(x=>x!==id);p.matches=p.matches.filter(x=>x!==id);toast('הוסר מאהבתי')}else{p.likes.push(id);if(S.mode==='together'&&PARTNER_LIKES.includes(id)&&!p.matches.includes(id)){p.matches.push(id);save();render();showMatch(ARTS.find(a=>a.id===id));return}toast('נשמר באהבתי')}save();render()},
+  toggleLike:()=>{const p=proj(),id=S._art;if(p.likes.includes(id)){p.likes=p.likes.filter(x=>x!==id);p.matches=p.matches.filter(x=>x!==id);toast('הוסר מאהבתי')}else{p.likes.push(id);if(S.mode==='together'&&PL(ARTS.find(a=>a.id===id))&&!p.matches.includes(id)){p.matches.push(id);save();render();showMatch(ARTS.find(a=>a.id===id));return}toast('נשמר באהבתי')}save();render()},
   ext:b=>{overlay(`<div class="sheet" role="dialog"><h2>${esc(b.dataset.v)}</h2><p class="sub" style="margin:0">באפליקציה האמיתית הכפתור פותח את הקישור של האמן. בדמו האמנים בדויים, אז אין לאן לעבור.</p><button class="btn soft" data-act="close">הבנתי</button></div>`)},
-  contact:()=>{const a=ARTS.find(x=>x.id===S._art),ar=ARTISTS[a.ar];const f=S._fmt||'A3';const fl=f==='orig'?'היצירה המקורית':'הדפס '+f;
+  contact:()=>{const a=ARTS.find(x=>x.id===S._art),ar=AR(a);const f=S._fmt||'A3';const fl=f==='orig'?'היצירה המקורית':'הדפס '+f;
     overlay(`<div class="sheet" role="dialog" aria-label="פנייה לאמן"><h2>פנייה ל${ar.name}</h2>
      <div class="artist" style="padding:10px"><span style="width:44px;aspect-ratio:${a.w}/${a.h};max-height:56px;display:block">${svgArt(a)}</span><span><b style="font-weight:500">${a.t}</b><div style="font-size:13px;color:var(--n700)">${fl}</div></span></div>
      <div class="field"><label for="msg">הודעה (לא חובה)</label><textarea id="msg" class="input" style="height:96px;padding:12px 14px;line-height:1.5">היי, ראיתי את ״${a.t}״ ב-ArtMatch ואשמח לפרטים על ${fl}.</textarea></div>
      <p class="note" style="text-align:right;margin:0">${ar.name.split(' ')[0]} תקבל את הפנייה ותחזור אליך. הפרטים שלך נחשפים רק כשהיא פותחת את הפנייה.</p>
      <button class="btn" data-act="contactSend">שליחת הפנייה</button><button class="btn soft" data-act="close">ביטול</button></div>`)},
-  contactSend:()=>{const a=ARTS.find(x=>x.id===S._art),ar=ARTISTS[a.ar];
+  contactSend:()=>{const a=ARTS.find(x=>x.id===S._art),ar=AR(a);
     overlay(`<div class="sheet" role="dialog" style="align-items:center;text-align:center"><div style="width:64px;height:64px;border-radius:999px;background:var(--m100);color:var(--m700);display:flex;align-items:center;justify-content:center"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div>
      <h2>זה היה הרגע של הפנייה</h2><p class="sub" style="margin:0">בדמו שום דבר לא נשלח. באפליקציה האמיתית ${ar.name} מקבלת את הפנייה בפורטל האמנים, ויורד לה קרדיט רק כשהיא פותחת את פרטי הקשר.</p>
      <button class="btn" data-act="close">סגירה</button></div>`)}
