@@ -115,6 +115,9 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .pchip{min-height:40px;padding:0 14px;border-radius:999px;border:none;background:var(--n100);font-size:14px;color:var(--n800);display:flex;align-items:center;gap:6px}
 /* grid */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tile.hasimg{background-size:cover;background-position:center;color:#FCFAF7!important}
+.tile.hasimg::before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 45%,rgba(23,19,15,.8));pointer-events:none}
+.tile b,.tile span{position:relative}
 .tile{aspect-ratio:3/4;border-radius:12px;border:2px solid transparent;padding:6px;display:flex;flex-direction:column;justify-content:flex-end;text-align:right;position:relative;overflow:hidden;font-size:11px;line-height:1.25}
 .tile b{font-weight:500;font-size:12px}
 .tile[aria-pressed="true"]{border-color:var(--b700);box-shadow:0 0 0 2px var(--b700)}
@@ -315,14 +318,22 @@ async function loadMuseum(){try{const c=JSON.parse(localStorage.getItem(MKEY)||'
 const museumPromise=loadMuseum().then(()=>{if(MUSEUM_READY&&cur()==='swipe'&&!deck.some(a=>a.museum)){buildDeck();render()}}).catch(()=>{});
 const STYLES=['מופשט','נוף','מינימליסטי','פיגורטיבי','צילום','טבע ובוטני'];
 const TASTE=[
- ['מונה ליזה','דה וינצ׳י','#8A6E4B','#F2E6CF','פיגורטיבי'],['הגל הגדול','הוקוסאי','#2F5B7C','#E9E1CF','נוף'],['ליל כוכבים','ואן גוך','#253C78','#F4D35E','נוף'],
- ['חבצלות המים','מונה','#6E9E8C','#E5EEE6','טבע ובוטני'],['הנשיקה','קלימט','#C9A227','#2A2621','פיגורטיבי'],['קומפוזיציה','מונדריאן','#F5F3F1','#B3363D','מינימליסטי'],
- ['קומפוזיציה VIII','קנדינסקי','#E9DCC4','#2F6E9E','מופשט'],['הריבוע השחור','מלביץ׳','#17130F','#F5F3F1','מינימליסטי'],['השבלול','מטיס','#E2B33C','#2F6E9E','מופשט'],
- ['פריחת שקדייה','ואן גוך','#8FC1D4','#F5F3F1','טבע ובוטני'],['ים הערפל','פרידריך','#A9B4BC','#2A2621','נוף'],['נוקטורן','ויסלר','#2D3E50','#D9C77B','נוף'],
- ['מס׳ 7','אף קלינט','#E7A9A0','#2A2621','מופשט'],['סנסיו','קליי','#E8925A','#FCFAF7','מופשט'],['דיוקן עצמי','שילה','#C98B57','#2A2621','פיגורטיבי'],
- ['מולן רוז׳','טולוז-לוטרק','#D9B44A','#2A2621','פיגורטיבי'],['טיול על החוף','סורויה','#EAF0F2','#5F7F99','צילום'],['תפוחים ותפוזים','סזאן','#C96F3B','#F5F3F1','טבע ובוטני'],
- ['הטמרר','טרנר','#E9B872','#433F3A','נוף'],['הצעקה','מונק','#D9762B','#253C78','פיגורטיבי']
+ ['מונה ליזה','דה וינצ׳י','#8A6E4B','#F2E6CF','פיגורטיבי','Mona_Lisa'],['הגל הגדול','הוקוסאי','#2F5B7C','#E9E1CF','נוף','The_Great_Wave_off_Kanagawa'],['ליל כוכבים','ואן גוך','#253C78','#F4D35E','נוף','The_Starry_Night'],
+ ['חבצלות המים','מונה','#6E9E8C','#E5EEE6','טבע ובוטני','Water_Lilies_(Monet_series)'],['הנשיקה','קלימט','#C9A227','#2A2621','פיגורטיבי','The_Kiss_(Klimt)'],['קומפוזיציה','מונדריאן','#F5F3F1','#B3363D','מינימליסטי','Composition_with_Red,_Blue,_and_Yellow'],
+ ['קומפוזיציה VIII','קנדינסקי','#E9DCC4','#2F6E9E','מופשט','Composition_VIII'],['הריבוע השחור','מלביץ׳','#17130F','#F5F3F1','מינימליסטי','Black_Square_(painting)'],['השבלול','מטיס','#E2B33C','#2F6E9E','מופשט','The_Snail_(Matisse)'],
+ ['פריחת שקדייה','ואן גוך','#8FC1D4','#F5F3F1','טבע ובוטני','Almond_Blossoms'],['ים הערפל','פרידריך','#A9B4BC','#2A2621','נוף','Wanderer_above_the_Sea_of_Fog'],['נוקטורן','ויסלר','#2D3E50','#D9C77B','נוף','Nocturne:_Blue_and_Gold_–_Old_Battersea_Bridge'],
+ ['מס׳ 7','אף קלינט','#E7A9A0','#2A2621','מופשט','The_Ten_Largest'],['סנסיו','קליי','#E8925A','#FCFAF7','מופשט','Senecio_(Klee)'],['דיוקן עצמי','שילה','#C98B57','#2A2621','פיגורטיבי','File:Egon_Schiele_-_Self-Portrait_with_Physalis_-_Google_Art_Project.jpg'],
+ ['מולן רוז׳','טולוז-לוטרק','#D9B44A','#2A2621','פיגורטיבי','Moulin_Rouge:_La_Goulue'],['טיול על החוף','סורויה','#EAF0F2','#5F7F99','נוף','Walk_on_the_Beach'],['תפוחים ותפוזים','סזאן','#C96F3B','#F5F3F1','טבע ובוטני','Still_Life_with_Apples_and_Oranges'],
+ ['הטמרר','טרנר','#E9B872','#433F3A','נוף','The_Fighting_Temeraire'],['הצעקה','מונק','#D9762B','#253C78','פיגורטיבי','The_Scream'],
+ ['הסטירג׳','שטיגליץ (צילום)','#5F5A55','#F5F3F1','צילום','The_Steerage'],['אם מהגרת','דורותיאה לאנג (צילום)','#7E7974','#F5F3F1','צילום','Migrant_Mother'],['הסוס בתנועה','מייברידג׳ (צילום)','#A29E99','#17130F','צילום','The_Horse_in_Motion']
 ];
+const TIMGKEY='artmatch-taste-img-v1';let TIMG={};try{TIMG=JSON.parse(localStorage.getItem(TIMGKEY)||'{}')}catch(e){}
+TASTE.forEach(t=>{if(t[5].startsWith('File:'))TIMG[t[5]]='https://commons.wikimedia.org/wiki/Special:FilePath/'+encodeURIComponent(t[5].slice(5))+'?width=400'});
+async function loadTasteImages(){const miss=TASTE.filter(t=>!TIMG[t[5]]);if(!miss.length)return;
+  await Promise.all(miss.map(async t=>{try{const r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(t[5]));if(!r.ok)return;const j=await r.json();const src=(j.thumbnail&&j.thumbnail.source)||(j.originalimage&&j.originalimage.source);if(src)TIMG[t[5]]=src}catch(e){}}));
+  try{localStorage.setItem(TIMGKEY,JSON.stringify(TIMG))}catch(e){}
+  if(cur()==='taste')document.querySelectorAll('.tile').forEach(el=>{const t=TASTE[+el.dataset.i];if(TIMG[t[5]]&&!el.classList.contains('hasimg')){el.classList.add('hasimg');el.style.backgroundImage=`url("${TIMG[t[5]]}")`}})}
+loadTasteImages();
 
 /* ---------- state + storage ---------- */
 const KEY='artmatch-demo-v1';
@@ -473,7 +484,7 @@ V.path=()=>`${top()}
  <div class="stack" style="margin-top:10px"><h1>איך נתחיל לחפש?</h1><p class="sub">אפשר לשנות את זה בכל רגע.</p></div>
  <div class="stack" style="margin-top:20px">
   <button class="card" data-go="filter" style="padding:20px"><b style="font-weight:500;font-size:18px">סינון מהיר</b><div class="sub">סגנון, כיוון, ואם רוצים גם טווח מחיר</div></button>
-  <button class="card" data-go="taste" style="padding:20px"><b style="font-weight:500;font-size:18px">לפי הטעם שלי</b><div class="sub">בוחרים 3 ציורים מוכרים שאוהבים, ואנחנו מבינים את הכיוון</div></button>
+  <button class="card" data-go="taste" style="padding:20px"><b style="font-weight:500;font-size:18px">לפי הטעם שלי</b><div class="sub">בוחרים לפחות 3 ציורים מוכרים שאוהבים, כמה שרוצים, ואנחנו מבינים את הכיוון</div></button>
   <button class="link" data-act="skipPath">לדלג ולראות הכול</button>
  </div>`;
 V.filter=()=>`${top()}
@@ -488,12 +499,12 @@ V.filter=()=>`${top()}
  </div>
  <div class="grow" style="min-height:18px"></div>
  <button class="btn" data-act="toWall">המשך</button>`;
-V.taste=()=>`${top()}
+V.taste=()=>{setTimeout(loadTasteImages,0);return `${top()}
  <div class="row" style="justify-content:space-between;margin-top:6px"><h1 style="font-size:24px">ציורים שאהבת</h1><span class="demo-tag" id="tcount">נבחרו ${S.taste.length}</span></div>
- <p class="sub">בוחרים לפחות 3, וכמה שרוצים מעבר לזה. ציורים מוכרים מנחלת הכלל, בדמו מוצגים כאריחי צבע עם שם.</p>
- <div class="tiles" style="margin-top:14px">${TASTE.map((t,i)=>`<button class="tile" aria-pressed="${S.taste.includes(i)}" data-act="taste" data-i="${i}" style="background:${t[2]};color:${t[3]}"><b>${t[0]}</b><span>${t[1]}</span></button>`).join('')}</div>
+ <p class="sub">בוחרים לפחות 3, וכמה שרוצים מעבר לזה. יצירות מוכרות מנחלת הכלל, מכל הסגנונות: נוף, מופשט, מינימליסטי, פיגורטיבי, טבע וצילום.</p>
+ <div class="tiles" style="margin-top:14px">${TASTE.map((t,i)=>`<button class="tile${TIMG[t[5]]?' hasimg':''}" aria-pressed="${S.taste.includes(i)}" data-act="taste" data-i="${i}" style="background-color:${t[2]};color:${t[3]};${TIMG[t[5]]?`background-image:url(&quot;${TIMG[t[5]]}&quot;)`:''}"><b>${t[0]}</b><span>${t[1]}</span></button>`).join('')}</div>
  <div style="min-height:16px"></div>
- <button class="btn" data-act="toWall" ${S.taste.length>=3?'':'disabled'} id="tnext">${S.taste.length>=3?'המשך':'עוד '+(3-S.taste.length)+' לפחות'}</button>`;
+ <button class="btn" data-act="toWall" ${S.taste.length>=3?'':'disabled'} id="tnext">${S.taste.length>=3?'המשך':'עוד '+(3-S.taste.length)+' לפחות'}</button>`};
 V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="projects">פרויקט: ${esc(p.name)}</button>`})}
  <div class="stack" style="margin-top:8px"><h1 style="font-size:24px">הקיר שלך</h1><p class="sub" style="margin:0">מצלמים את הקיר ישר מולו, ומזינים את המידות שלו. כך כל יצירה תופיע בגודל האמיתי.</p></div>
  <div style="margin-top:14px">${photos[p.id]&&p.photoR?cornerEditor(p):wallHTML(p,null,null,{maxH:'34vh'})}</div>
@@ -562,7 +573,7 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 19 · 07.11 22:23</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 20 · 07.11 22:29</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
