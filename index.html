@@ -66,6 +66,10 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .cmark{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:auto;touch-action:none;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:2}
 .cmark::before{content:"";width:26px;height:26px;border-radius:999px;border:3px solid var(--b700);background:rgba(252,250,247,.7);box-shadow:0 2px 6px rgba(23,19,15,.4)}
 .cmark::after{content:"";position:absolute;width:6px;height:6px;border-radius:999px;background:var(--b700)}
+.loupe{position:absolute;width:116px;height:116px;border-radius:999px;border:3px solid var(--m500);box-shadow:0 6px 18px rgba(23,19,15,.45);background-repeat:no-repeat;background-color:#000;pointer-events:none;z-index:5}
+.loupe::before,.loupe::after{content:"";position:absolute;background:var(--m500)}
+.loupe::before{left:57px;top:40px;width:2px;height:36px}
+.loupe::after{top:57px;left:40px;height:2px;width:36px}
 .handle{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:999px;touch-action:none;display:flex;align-items:center;justify-content:center;z-index:2;cursor:grab}
 .handle::after{content:"";width:11px;height:11px;border-radius:999px;background:var(--m500);border:2px solid #FCFAF7;box-shadow:0 2px 6px rgba(23,19,15,.45)}
 .cpoly{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -487,7 +491,7 @@ V.taste=()=>`${top()}
 V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="projects">פרויקט: ${esc(p.name)}</button>`})}
  <div class="stack" style="margin-top:8px"><h1 style="font-size:24px">הקיר שלך</h1><p class="sub" style="margin:0">מצלמים את הקיר ישר מולו, ומזינים את המידות שלו. כך כל יצירה תופיע בגודל האמיתי.</p></div>
  <div style="margin-top:14px">${photos[p.id]&&p.photoR?cornerEditor(p):wallHTML(p,null,null,{maxH:'34vh'})}</div>
- ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div><div style="font-size:14px;color:var(--b800);margin-top:2px">העיגול הכתום הוא מרכז היצירה: <b id="ccm">${Math.round((1-defCenter(p).v)*p.wallH/10)}</b> ס״מ מהרצפה. גוררים אותו למקום שבו תרצו לתלות.</div>`:''}
+ ${photos[p.id]&&p.photoR?`<div class="row" style="justify-content:space-between;margin-top:6px"><span style="font-size:14px;color:var(--m800)">גוררים את 4 העיגולים לפינות הקיר</span><button class="link" data-act="resetCorners">איפוס פינות</button></div><button class="btn soft" data-act="detectWalls" style="min-height:44px;font-size:15px;margin-top:6px">✨ זיהוי קיר אוטומטי (ניסיוני)</button><div style="font-size:14px;color:var(--b800);margin-top:2px">העיגול הכתום הוא מרכז היצירה: <b id="ccm">${Math.round((1-defCenter(p).v)*p.wallH/10)}</b> ס״מ מהרצפה. גוררים אותו למקום שבו תרצו לתלות.</div>`:''}
  <div class="ph-actions" style="margin-top:12px">
   <input type="file" id="fcam" accept="image/*" capture="environment" data-photo hidden>
   <input type="file" id="fgal" accept="image/*" data-photo hidden>
@@ -575,15 +579,49 @@ function bind(root){
 
 /* ---------- corner editor ---------- */
 function cornerEditor(p){const c=p.corners;return `<div class="wallfit" style="height:40vh;overflow:visible;background:transparent"><div class="wall cedit" data-r="${p.photoR}" id="cedit"><img class="photo" src="${photos[p.id]}" style="object-fit:fill" alt="הקיר שלך"><svg class="cpoly" viewBox="0 0 100 100" preserveAspectRatio="none"><polygon id="cpg" points="${c.map(x=>x[0]*100+','+x[1]*100).join(' ')}" fill="rgba(43,194,172,.18)" stroke="#2BC2AC" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div class="plane" data-c='${JSON.stringify(c)}'><span class="cmark" style="left:${defCenter(p).u*100}%;top:${defCenter(p).v*100}%" aria-label="מרכז היצירה"></span></div>${c.map((x,i)=>`<span class="handle" data-i="${i}" aria-label="פינה ${i+1}" style="left:${x[0]*100}%;top:${x[1]*100}%"></span>`).join('')}</div></div>`}
+function loupe(box,u,v){let L=box.querySelector('.loupe');const p=proj();if(!L){L=document.createElement('div');L.className='loupe';L.setAttribute('aria-hidden','true');box.appendChild(L)}
+  L.hidden=false;const W=box.offsetWidth,H=box.offsetHeight,z=3,R=58;const x=u*W,y=v*H;
+  let lx=x-R,ly=y-R-95;if(ly<-R)ly=y+40;lx=Math.min(W-R,Math.max(-R,lx));
+  L.style.left=lx+'px';L.style.top=ly+'px';L.style.backgroundImage=`url(${photos[p.id]})`;L.style.backgroundSize=`${W*z}px ${H*z}px`;L.style.backgroundPosition=`${-(x*z-R)}px ${-(y*z-R)}px`}
 function bindCorners(){const box=$('#cedit');if(!box)return;const p=proj();
   box.querySelectorAll('.handle').forEach(hd=>{let on=false;
-    hd.addEventListener('pointerdown',e=>{on=true;hd.setPointerCapture(e.pointerId);e.preventDefault()});
-    hd.addEventListener('pointermove',e=>{if(!on)return;const r=box.getBoundingClientRect();const u=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),v=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));const i=+hd.dataset.i;p.corners[i]=[u,v];hd.style.left=u*100+'%';hd.style.top=v*100+'%';$('#cpg').setAttribute('points',p.corners.map(x=>x[0]*100+','+x[1]*100).join(' '))});
-    const up=()=>{if(on){on=false;save();computeLight(p);box.querySelector('.plane').dataset.c=JSON.stringify(p.corners);applyPlanes()}};hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up)});
+    hd.addEventListener('pointerdown',e=>{on=true;hd.setPointerCapture(e.pointerId);e.preventDefault();const i=+hd.dataset.i;loupe(box,p.corners[i][0],p.corners[i][1])});
+    hd.addEventListener('pointermove',e=>{if(!on)return;const r=box.getBoundingClientRect();const u=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),v=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));const i=+hd.dataset.i;p.corners[i]=[u,v];loupe(box,u,v);hd.style.left=u*100+'%';hd.style.top=v*100+'%';$('#cpg').setAttribute('points',p.corners.map(x=>x[0]*100+','+x[1]*100).join(' '))});
+    const up=()=>{const L=box.querySelector('.loupe');if(L)L.hidden=true;if(on){on=false;save();computeLight(p);box.querySelector('.plane').dataset.c=JSON.stringify(p.corners);applyPlanes()}};hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up)});
   const cm=box.querySelector('.cmark');let on=false;
   cm.addEventListener('pointerdown',e=>{on=true;cm.setPointerCapture(e.pointerId);e.preventDefault()});
   cm.addEventListener('pointermove',e=>{if(!on)return;const q=screenToWall(box,e);const c={u:Math.min(.95,Math.max(.05,q.u)),v:Math.min(.95,Math.max(.05,q.v))};p.center=c;cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';const t=$('#ccm');if(t)t.textContent=Math.round((1-c.v)*p.wallH/10)});
   const cup=()=>{if(on){on=false;p.pos={};save()}};cm.addEventListener('pointerup',cup);cm.addEventListener('pointercancel',cup)}
+
+/* ---------- automatic wall detection (experimental) ---------- */
+function wallQuads(m){const w=m.width,h=m.height,ch=m.channels||1,d=m.data;const GW=120,GH=Math.max(10,Math.round(120*h/w));const g=new Uint8Array(GW*GH);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const sx=Math.min(w-1,Math.floor((x+.5)*w/GW)),sy=Math.min(h-1,Math.floor((y+.5)*h/GH));g[y*GW+x]=d[(sy*w+sx)*ch]>127?1:0}
+  const lab=new Int32Array(GW*GH).fill(-1);const comps=[];
+  for(let i=0;i<GW*GH;i++){if(!g[i]||lab[i]>=0)continue;const id=comps.length,pts=[];const st=[i];lab[i]=id;while(st.length){const k=st.pop();pts.push(k);const x=k%GW,y=(k-x)/GW;[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{const nx=x+dx,ny=y+dy;if(nx<0||ny<0||nx>=GW||ny>=GH)return;const n=ny*GW+nx;if(g[n]&&lab[n]<0){lab[n]=id;st.push(n)}})}comps.push(pts)}
+  const regions=[];comps.filter(c=>c.length>GW*GH*.04).forEach(c=>{const P=c.map(k=>[k%GW,Math.floor(k/GW)]);splitRegion(P).forEach(r=>{if(r.length>GW*GH*.03)regions.push(r)})});
+  regions.sort((a,b)=>b.length-a.length);
+  return regions.slice(0,3).map(P=>{let tl=P[0],tr=P[0],br=P[0],bl=P[0];P.forEach(q=>{if(q[0]+q[1]<tl[0]+tl[1])tl=q;if(q[0]-q[1]>tr[0]-tr[1])tr=q;if(q[0]+q[1]>br[0]+br[1])br=q;if(q[1]-q[0]>bl[1]-bl[0])bl=q});
+    return [tl,[tr[0]+1,tr[1]],[br[0]+1,br[1]+1],[bl[0],bl[1]+1]].map(([x,y])=>[Math.min(1,x/GW),Math.min(1,y/GH)])})}
+function splitRegion(P){const top={};P.forEach(([x,y])=>{if(top[x]===undefined||y<top[x])top[x]=y});const xs=Object.keys(top).map(Number).sort((a,b)=>a-b);if(xs.length<16)return [P];
+  const fit=a=>{const n=a.length;let sx=0,sy=0,sxx=0,sxy=0;a.forEach(x=>{const y=top[x];sx+=x;sy+=y;sxx+=x*x;sxy+=x*y});const den=n*sxx-sx*sx||1;const m=(n*sxy-sx*sy)/den,b=(sy-m*sx)/n;let e=0;a.forEach(x=>{const r=top[x]-(m*x+b);e+=r*r});return {m,e}};
+  const all=fit(xs);let best=null;for(let i=Math.floor(xs.length*.15);i<Math.ceil(xs.length*.85);i++){const L=fit(xs.slice(0,i+1)),R=fit(xs.slice(i));const e=L.e+R.e;if(!best||e<best.e)best={e,i,L,R}}
+  if(best&&best.e<all.e*.35&&Math.abs(best.L.m-best.R.m)>.12){const cx=xs[best.i];return [P.filter(q=>q[0]<=cx),P.filter(q=>q[0]>cx)]}return [P]}
+window.__wallQuads=wallQuads;
+async function detectWalls(){const p=proj();if(!photos[p.id])return;
+  const o=overlay(`<div class="sheet" role="dialog" aria-label="זיהוי קיר"><h2>מזהים את הקיר…</h2><p class="sub" style="margin:0" id="dprog">בפעם הראשונה נטען מודל זיהוי (כמה מגה). אחר כך זה מהיר.</p></div>`);o.dataset.lock=1;
+  try{const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');T.env.allowLocalModels=false;
+    if(!window._seg)window._seg=await T.pipeline('image-segmentation','Xenova/segformer-b0-finetuned-ade-512-512',{progress_callback:x=>{const el=$('#dprog');if(el&&x.status==='progress'&&x.progress)el.textContent='טוען מודל זיהוי… '+Math.round(x.progress)+'%'}});
+    const el=$('#dprog');if(el)el.textContent='מנתחים את התמונה…';
+    const out=await window._seg(photos[p.id]);const wall=out.find(r=>/wall/i.test(r.label));
+    if(!wall)throw new Error('nowall');const quads=wallQuads(wall.mask);if(!quads.length)throw new Error('nowall');
+    window._quads=quads;
+    if(quads.length===1){A.pickWall({dataset:{i:0}});return}
+    const cols=['#2BC2AC','#CD7A4D','#2F6E9E'];
+    overlay(`<div class="sheet" role="dialog" aria-label="בחירת קיר"><h2>זיהינו ${quads.length} קירות. איזה מהם?</h2>
+     <div style="position:relative;border-radius:14px;overflow:hidden"><img src="${photos[p.id]}" style="display:block;width:100%" alt="הקיר שלך"><svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">${quads.map((q,i)=>`<polygon points="${q.map(c=>c[0]*100+','+c[1]*100).join(' ')}" fill="${cols[i]}33" stroke="${cols[i]}" stroke-width="2" vector-effect="non-scaling-stroke"/><text x="${q.reduce((a,c)=>a+c[0],0)*25}" y="${q.reduce((a,c)=>a+c[1],0)*25}" font-size="9" font-weight="700" fill="#fff" stroke="#17130F" stroke-width=".4" text-anchor="middle" dominant-baseline="middle">${i+1}</text>`).join('')}</svg></div>
+     <div class="row" style="gap:8px">${quads.map((q,i)=>`<button class="btn" style="background:${cols[i]};color:#17130F" data-act="pickWall" data-i="${i}">קיר ${i+1}</button>`).join('')}</div>
+     <button class="btn soft" data-act="close">ביטול, אסמן לבד</button></div>`);
+  }catch(e){overlay(`<div class="sheet" role="dialog"><h2>לא הצלחנו לזהות קיר אוטומטית</h2><p class="sub" style="margin:0">${e&&e.message==='nowall'?'לא נמצא קיר ברור בתמונה. אפשר לסמן את הפינות ידנית.':'לא הצלחנו לטעון את מודל הזיהוי (צריך חיבור לאינטרנט, ובדמו בתוך Claude זה חסום). אפשר לסמן את הפינות ידנית.'}</p><button class="btn" data-act="close">סימון ידני</button></div>`)}}
 
 /* ---------- photo ---------- */
 function loadPhoto(file){
@@ -664,6 +702,8 @@ function showRecal(){
 
 /* ---------- actions ---------- */
 const A={
+  detectWalls:()=>detectWalls(),
+  pickWall:b=>{const p=proj();p.corners=window._quads[+b.dataset.i];p.pos={};save();closeOverlay();render();computeLight(p);toast('בודקים את 4 הפינות ומתקנים אם צריך')},
   back:()=>{let h=null;try{h=history.state}catch(e){}if(h&&h.am>1)history.back();else back()},
   lightToggle:()=>{S.lightOn=S.lightOn===false;save();const y=$('.screen').scrollTop;render();$('.screen').scrollTop=y},
   zoomIn:()=>{S._zoom=Math.min(3,(S._zoom||1)+.5);applyZoom()},
