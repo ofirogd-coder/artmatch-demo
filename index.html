@@ -96,6 +96,11 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .more{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:40;border:none;border-radius:999px;background:var(--n950);color:var(--n50);font-size:13px;padding:8px 16px;box-shadow:0 4px 14px rgba(23,19,15,.3);animation:bob 1.6s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,4px)}}
 @media (prefers-reduced-motion:reduce){.more{animation:none}}
+.scard .meta>div{flex:1}
+.scard .meta>div>span{display:block}
+.scard .meta b,.scard .meta span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.sitem b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.screen h1.clamp{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .plane{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;pointer-events:none}
 .ph-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .upl{position:relative;min-height:52px;border-radius:16px;border:1.5px solid var(--n600);background:var(--n50);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;font-size:15px}
@@ -559,7 +564,7 @@ V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=AR(a);
  <div style="margin-top:6px">${wallHTML(p,a,size,{maxH:S._full?'68vh':'40vh',drag:true,tools:true})}</div>
  <div class="row" style="justify-content:space-between;margin-top:6px"><span class="note" style="text-align:right">גוררים את היצירה כדי למקם אותה על הקיר</span>${photos[p.id]?`<span class="row" style="gap:8px;flex-shrink:0"><span style="font-size:13px;color:var(--n700)">התאמה לתאורה</span><button class="switch" role="switch" aria-checked="${S.lightOn!==false}" aria-label="התאמה לתאורה של התמונה" data-act="lightToggle"></button></span>`:''}</div>
  <div class="stack" style="margin-top:14px">
-  <div><h1 style="font-size:24px">${a.t}</h1><p class="sub" style="margin-top:2px">${a.tech} · מקור ${D(a.w,a.h)} ס״מ</p></div>
+  <div><h1 class="clamp" style="font-size:24px" title="${esc(a.t)}">${a.t}</h1><p class="sub" style="margin-top:2px">${a.tech} · מקור ${D(a.w,a.h)} ס״מ</p></div>
   <div class="field"><label>פורמט (מתעדכן על הקיר)</label>
    <div class="stack" style="gap:8px" data-group="fmt">
     ${PRINTS.map(x=>`<button class="fmt" aria-pressed="${f===x.k}" data-val="${x.k}"><span>הדפס ${x.k} · ${D(x.w,x.h)}</span><b style="font-weight:500">₪${x.p+off(a)}</b></button>`).join('')}
@@ -578,7 +583,7 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 25 · 08.11 12:11</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 26 · 08.11 14:50</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();moreHint();
@@ -688,7 +693,7 @@ function loadPhoto(file){
 function cardHTML(a,cls){const p=proj();return `<div class="scard ${cls}" data-id="${a.id}">
   <span class="stamp like">אהבתי</span><span class="stamp nope">לא בשבילי</span>
   ${S.view==='art'?`<div class="artonly"><div class="aframe" style="aspect-ratio:${a.w}/${a.h}">${svgArt(a)}</div><span class="dims">${D(a.w,a.h)} ס״מ</span></div>`:wallHTML(p,a,null,{fill:true,drag:cls==='front'})}
-  <div class="meta"><div style="min-width:0"><b style="font-weight:500;font-size:18px;display:block">${a.t}</b><span style="font-size:14px;color:var(--n700)">${AR(a).name} · ${D(a.w,a.h)} ס״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
+  <div class="meta"><div style="min-width:0"><b dir="auto" style="font-weight:500;font-size:18px;display:block;text-align:right">${a.t}</b><span style="font-size:14px;color:var(--n700)">${AR(a).name} · ${D(a.w,a.h)} ס״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
  </div>`}
 function drawDeck(){
   const el=$('#deck');if(!el)return;
