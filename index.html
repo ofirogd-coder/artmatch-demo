@@ -93,6 +93,9 @@ h2{font-weight:500;font-size:19px;margin:0;color:var(--n950)}
 .ver{position:absolute;left:16px;bottom:calc(6px + env(safe-area-inset-bottom,0px));font-size:10px;color:var(--n500);opacity:.8;pointer-events:none;z-index:70;letter-spacing:.02em}
 .occ{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;object-fit:fill}
 .detbar{position:sticky;bottom:calc(-20px - env(safe-area-inset-bottom,0px));margin:16px calc(-1*max(18px,env(safe-area-inset-left,0px))) -20px;padding:12px 24px calc(14px + env(safe-area-inset-bottom,0px));background:rgba(252,250,247,.96);border-top:1px solid var(--n200);display:flex;justify-content:space-between;align-items:center;z-index:20;backdrop-filter:blur(6px)}
+.more{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:40;border:none;border-radius:999px;background:var(--n950);color:var(--n50);font-size:13px;padding:8px 16px;box-shadow:0 4px 14px rgba(23,19,15,.3);animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,4px)}}
+@media (prefers-reduced-motion:reduce){.more{animation:none}}
 .plane{position:absolute;left:0;top:0;width:100%;height:100%;transform-origin:0 0;pointer-events:none}
 .ph-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .upl{position:relative;min-height:52px;border-radius:16px;border:1.5px solid var(--n600);background:var(--n50);display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;font-size:15px}
@@ -363,7 +366,7 @@ function top(opts={}){
   const l=opts.back!==false&&stack.length>1?`<button class="iconbtn" data-act="back" aria-label="חזרה">${I.back}</button>`:'<span style="width:44px"></span>';
   return `<div class="top">${l}<div class="logo">${LOGO}</div>${opts.right||'<span style="width:44px"></span>'}</div>`;
 }
-const D=(w,h)=>`<bdi dir="ltr">${w}×${h}</bdi>`;
+const CM=v=>{const c=v/10;return Number.isInteger(c)?c:c.toFixed(1)};const D=(w,h)=>`<bdi dir="ltr">${CM(w)}×${CM(h)}</bdi>`;
 const off=a=>(a.id%5)*20-20;
 function minPrice(a){return PRINTS[0].p+off(a)}
 function wallHTML(p,art,size,opts={}){
@@ -380,7 +383,7 @@ function wallHTML(p,art,size,opts={}){
     if(opts.drag)ad=`<div class="gl h" style="top:${pos.v*100}%"></div><div class="gl v" style="left:${pos.u*100}%;top:${pos.v*100+hp/2}%"></div>`+ad;
     inner+=persp?`<div class="plane" data-c='${JSON.stringify(p.corners)}'>${ad}</div>`:ad;
     if(persp&&p.occ&&p.occOn!==false)inner+=`<img class="occ" src="${p.occ}" alt="">`;
-    inner+=`<span class="dims">${D(w,h)} מ״מ על קיר ${D(p.wallW,p.wallH)}</span>`;
+    inner+=`<span class="dims">${D(w,h)} ס״מ על קיר ${D(p.wallW,p.wallH)}</span>`;
   }
   const chip=opts.drag?`<span class="hchip">מרכז היצירה <b class="hcm">${art?Math.round((1-clampPos(getPos(p,art.id),0,0).v)*p.wallH/10):''}</b> ס״מ מהרצפה</span>`:'';
   const tools=opts.tools?`<div class="wtools"><button class="iconbtn" data-act="zoomIn" aria-label="הגדלה">${I.plus}</button><button class="iconbtn" data-act="zoomOut" aria-label="הקטנה"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14"/></svg></button><button class="iconbtn" data-act="fullWall" aria-label="${S._full?'הקטנת התצוגה':'תצוגה גדולה'}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button></div>`:'';
@@ -392,7 +395,7 @@ function computeLight(p,done){const src=photos[p.id];if(!src)return;const im=new
   if(!n)return;r/=n;g/=n;b/=n;const lum=.2126*r+.7152*g+.0722*b;const m=Math.max(r,g,b)||1;
   p.light={b:Math.min(1.08,Math.max(.55,lum/205)),t:[r,g,b].map(v=>Math.round(v/m*255))};save();done&&done()};im.src=src}
 function sizeRule(p){const z=p.size||{};const auto={minW:Math.round(p.wallW*.12),maxW:Math.round(p.wallW*.9),minH:null,maxH:Math.round(p.wallH*.9)};const r={on:z.on!==false,auto};['minW','maxW','minH','maxH'].forEach(k=>r[k]=(z[k]!==undefined)?z[k]:auto[k]);return r}
-function refreshSize(p){const z=sizeRule(p);['minW','maxW','minH','maxH'].forEach(k=>{const el=document.getElementById(k);if(el)el.value=z[k]||''})}
+function refreshSize(p){const z=sizeRule(p);['minW','maxW','minH','maxH'].forEach(k=>{const el=document.getElementById(k);if(el)el.value=z[k]?CM(z[k]):''})}
 function defCenter(p){return p.center||{u:.5,v:Math.min(.85,Math.max(.15,1-1450/p.wallH))}}
 function getPos(p,id){return (p.pos&&p.pos[id])||defCenter(p)}
 function clampPos(q,hu,hv){return {u:Math.min(1-hu,Math.max(hu,q.u)),v:Math.min(1-hv,Math.max(hv,q.v))}}
@@ -476,7 +479,7 @@ V.about=()=>{
 V.projects=()=>`${top({right:`<button class="iconbtn" data-act="resetDemo" aria-label="איפוס הדמו" title="איפוס הדמו">${I.undo}</button>`})}
  <div class="stack" style="margin-top:10px"><h1>${S.name?'שלום '+esc(S.name):'הפרויקטים שלי'}</h1><p class="sub">כל פרויקט הוא קיר אחד. ממשיכים מאיפה שעצרת, או פותחים חדש.</p></div>
  <div class="stack" style="margin-top:18px">
- ${S.projects.length?S.projects.map(p=>`<div class="row"><button class="pcard" data-act="openProj" data-id="${p.id}"><span class="pthumb">${photos[p.id]?`<img src="${photos[p.id]}" alt="">`:I.wall}</span><span style="flex:1;min-width:0"><b style="font-weight:500;display:block">${esc(p.name)}</b><span style="font-size:13px;color:var(--n700)">קיר ${D(p.wallW,p.wallH)} מ״מ · ${p.likes.length} אהבתי${p.matches.length?' · '+p.matches.length+' מאצ׳ים':''}</span></span></button><button class="iconbtn" data-act="delProj" data-id="${p.id}" aria-label="מחיקת ${esc(p.name)}">${I.trash}</button></div>`).join(''):`<div class="empty">עדיין אין פרויקטים. פותחים את הראשון?</div>`}
+ ${S.projects.length?S.projects.map(p=>`<div class="row"><button class="pcard" data-act="openProj" data-id="${p.id}"><span class="pthumb">${photos[p.id]?`<img src="${photos[p.id]}" alt="">`:I.wall}</span><span style="flex:1;min-width:0"><b style="font-weight:500;display:block">${esc(p.name)}</b><span style="font-size:13px;color:var(--n700)">קיר ${D(p.wallW,p.wallH)} ס״מ · ${p.likes.length} אהבתי${p.matches.length?' · '+p.matches.length+' מאצ׳ים':''}</span></span></button><button class="iconbtn" data-act="delProj" data-id="${p.id}" aria-label="מחיקת ${esc(p.name)}">${I.trash}</button></div>`).join(''):`<div class="empty">עדיין אין פרויקטים. פותחים את הראשון?</div>`}
  </div>
  <div class="grow" style="min-height:18px"></div>
  <button class="btn" data-act="newProj">${I.plus}פרויקט חדש</button>`;
@@ -519,14 +522,14 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
  </div>
  <p class="note" style="margin:6px 0 0">אם המצלמה או הגלריה לא נפתחות, פותחים את הקישור בדפדפן (ספארי או כרום) במקום בתוך אפליקציה.</p>
  <div class="row2" style="margin-top:14px">
-  <div class="field"><label for="ww">רוחב הקיר (מ״מ)</label><input id="ww" class="input" inputmode="numeric" value="${p.wallW}"></div>
-  <div class="field"><label for="wh">גובה הקיר (מ״מ)</label><input id="wh" class="input" inputmode="numeric" value="${p.wallH}"></div>
+  <div class="field"><label for="ww">רוחב הקיר (ס״מ)</label><input id="ww" class="input" inputmode="decimal" value="${CM(p.wallW)}"></div>
+  <div class="field"><label for="wh">גובה הקיר (ס״מ)</label><input id="wh" class="input" inputmode="decimal" value="${CM(p.wallH)}"></div>
  </div>
- <p class="note" style="text-align:right;margin:8px 0 0">${photos[p.id]&&p.photoR?'המידות הן של האזור שסימנת בין 4 הפינות.':'טיפ: 2400 מ״מ = 2.4 מטר.'}</p>
+ <p class="note" style="text-align:right;margin:8px 0 0">${photos[p.id]&&p.photoR?'המידות הן של האזור שסימנת בין 4 הפינות.':'טיפ: 240 ס״מ = 2.4 מטר.'}</p>
  ${(()=>{const z=sizeRule(p);return `<div class="card" style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
    <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">גודל היצירה שמתאים לקיר</b><div class="sub" style="font-size:13px;margin:2px 0 0">רק יצירות שנכנסות בקיר. מותאם אוטומטית, אפשר לשנות</div></span><button class="switch" role="switch" aria-checked="${z.on}" aria-label="סינון לפי גודל הקיר" data-act="sizeToggle"></button></div>
    <div id="sizebox" ${z.on?'':'hidden'} style="display:flex;flex-direction:column;gap:10px">
-    ${[['W','רוחב'],['H','גובה']].map(([k,t])=>`<div class="row2"><div class="field"><label for="min${k}">${t} מינימלי (מ״מ)</label><input id="min${k}" class="input" inputmode="numeric" data-size="min${k}" placeholder="ללא" value="${z['min'+k]||''}"></div><div class="field"><label for="max${k}">${t} מקסימלי (מ״מ)</label><input id="max${k}" class="input" inputmode="numeric" data-size="max${k}" placeholder="ללא" value="${z['max'+k]||''}"></div></div>`).join('')}
+    ${[['W','רוחב'],['H','גובה']].map(([k,t])=>`<div class="row2"><div class="field"><label for="min${k}">${t} מינימלי (ס״מ)</label><input id="min${k}" class="input" inputmode="decimal" data-size="min${k}" placeholder="ללא" value="${z['min'+k]?CM(z['min'+k]):''}"></div><div class="field"><label for="max${k}">${t} מקסימלי (ס״מ)</label><input id="max${k}" class="input" inputmode="decimal" data-size="max${k}" placeholder="ללא" value="${z['max'+k]?CM(z['max'+k]):''}"></div></div>`).join('')}
     <div class="row" style="justify-content:space-between"><span class="note" style="text-align:right">אוטומטי: עד 90% מהקיר, ולפחות 12% מרוחבו</span><button class="link" data-act="sizeAuto">חזרה לאוטומטי</button></div>
    </div></div>`})()}
  <div class="grow" style="min-height:16px"></div>
@@ -556,7 +559,7 @@ V.detail=()=>{const p=proj();const a=ARTS.find(x=>x.id===S._art);const ar=AR(a);
  <div style="margin-top:6px">${wallHTML(p,a,size,{maxH:S._full?'68vh':'40vh',drag:true,tools:true})}</div>
  <div class="row" style="justify-content:space-between;margin-top:6px"><span class="note" style="text-align:right">גוררים את היצירה כדי למקם אותה על הקיר</span>${photos[p.id]?`<span class="row" style="gap:8px;flex-shrink:0"><span style="font-size:13px;color:var(--n700)">התאמה לתאורה</span><button class="switch" role="switch" aria-checked="${S.lightOn!==false}" aria-label="התאמה לתאורה של התמונה" data-act="lightToggle"></button></span>`:''}</div>
  <div class="stack" style="margin-top:14px">
-  <div><h1 style="font-size:24px">${a.t}</h1><p class="sub" style="margin-top:2px">${a.tech} · מקור ${D(a.w,a.h)} מ״מ</p></div>
+  <div><h1 style="font-size:24px">${a.t}</h1><p class="sub" style="margin-top:2px">${a.tech} · מקור ${D(a.w,a.h)} ס״מ</p></div>
   <div class="field"><label>פורמט (מתעדכן על הקיר)</label>
    <div class="stack" style="gap:8px" data-group="fmt">
     ${PRINTS.map(x=>`<button class="fmt" aria-pressed="${f===x.k}" data-val="${x.k}"><span>הדפס ${x.k} · ${D(x.w,x.h)}</span><b style="font-weight:500">₪${x.p+off(a)}</b></button>`).join('')}
@@ -575,13 +578,15 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 24 · 07.11 22:53</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 25 · 08.11 12:11</span>');
   bind(app);
   if(name==='swipe')drawDeck();
-  const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();
+  const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();moreHint();
   {const q=proj();if(q&&photos[q.id]&&!q.light&&q.photoR)computeLight(q,()=>{if(['swipe','detail'].includes(cur()))render()})}
   const pp=proj();if(name==='wall'&&pp&&photos[pp.id]&&!pp.photoR){const im=new Image();im.onload=()=>{pp.photoR=im.width/im.height;pp.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();render()};im.src=photos[pp.id]}
 }
+function moreHint(){const sc=$('.screen');if(!sc)return;let m=$('#more');if(!m){app.insertAdjacentHTML('beforeend','<button class="more" id="more" aria-label="יש עוד למטה">יש עוד למטה ↓</button>');m=$('#more');m.onclick=()=>sc.scrollBy({top:sc.clientHeight*.7,behavior:'smooth'})}
+  const upd=()=>{const left=sc.scrollHeight-sc.clientHeight-sc.scrollTop;m.hidden=!(left>40)};upd();sc.addEventListener('scroll',upd,{passive:true});setTimeout(upd,400)}
 function fitWalls(){document.querySelectorAll('.wallfit').forEach(f=>{const w=f.querySelector('.wall');const r=+w.dataset.r;const W=f.clientWidth,H=f.clientHeight;if(!W||!H)return;let ww=W,hh=W/r;if(hh>H){hh=H;ww=H*r}w.style.width=ww+'px';w.style.height=hh+'px'});applyPlanes()}
 function homog(c,W,H){const [x0,y0]=c[0],[x1,y1]=c[1],[x2,y2]=c[2],[x3,y3]=c[3];const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;let a,b,cc,d,e,f,g=0,h=0;if(Math.abs(dx3)<1e-9&&Math.abs(dy3)<1e-9){a=x1-x0;b=x3-x0;cc=x0;d=y1-y0;e=y3-y0;f=y0}else{const den=dx1*dy2-dx2*dy1;g=(dx3*dy2-dx2*dy3)/den;h=(dx1*dy3-dx3*dy1)/den;a=x1-x0+g*x1;b=x3-x0+h*x3;cc=x0;d=y1-y0+g*y1;e=y3-y0+h*y3;f=y0}return `matrix3d(${a/W},${d/W},0,${g/W},${b/H},${e/H},0,${h/H},0,0,1,0,${cc},${f},0,1)`}
 function applyPlanes(){document.querySelectorAll('.plane').forEach(pl=>{const W=pl.parentElement.clientWidth,H=pl.parentElement.clientHeight;if(!W||!H)return;const c=JSON.parse(pl.dataset.c).map(([u,v])=>[u*W,v*H]);pl.style.transform=homog(c,W,H)})}
@@ -600,10 +605,10 @@ function bind(root){
   root.querySelectorAll('[data-multi]').forEach(g=>g.querySelectorAll('[data-val]').forEach(b=>b.onclick=()=>{
     const v=b.dataset.val,i=S.styles.indexOf(v);if(i>=0)S.styles.splice(i,1);else S.styles.push(v);b.setAttribute('aria-pressed',i<0);save();
   }));
-  root.querySelectorAll('[data-size]').forEach(el=>el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);p.size=p.size||{};p.size[el.dataset.size]=v>0?v:null;el.value=p.size[el.dataset.size]||'';save()});
+  root.querySelectorAll('[data-size]').forEach(el=>el.onchange=()=>{const p=proj();const v=Math.round(parseFloat(el.value.replace(/[^\d.]/g,''))*10);p.size=p.size||{};p.size[el.dataset.size]=v>0?v:null;el.value=p.size[el.dataset.size]?CM(p.size[el.dataset.size]):'';save()});
   const pm=root.querySelector('#pm');if(pm)pm.oninput=()=>{S.priceMax=+pm.value;$('#pmv').textContent='₪'+pm.value;save()};
   root.querySelectorAll('[data-photo]').forEach(inp=>inp.onchange=()=>{const f=inp.files&&inp.files[0];if(f)loadPhoto(f)});
-  ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=parseInt(el.value.replace(/\D/g,''),10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save();refreshSize(p);const cm=$('.cmark');if(cm){const c=defCenter(p);cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';$('#ccm').textContent=Math.round((1-c.v)*p.wallH/10)}}else{toast('מזינים מספר בין 300 ל-20000 מ״מ');el.value=id==='ww'?p.wallW:p.wallH}}});
+  ['ww','wh'].forEach(id=>{const el=root.querySelector('#'+id);if(el)el.onchange=()=>{const p=proj();const v=Math.round(parseFloat(el.value.replace(/[^\d.]/g,''))*10);if(v>=300&&v<=20000){if(id==='ww')p.wallW=v;else p.wallH=v;save();refreshSize(p);const cm=$('.cmark');if(cm){const c=defCenter(p);cm.style.left=c.u*100+'%';cm.style.top=c.v*100+'%';$('#ccm').textContent=Math.round((1-c.v)*p.wallH/10)}}else{toast('מזינים מספר בין 30 ל-2000 ס״מ');el.value=CM(id==='ww'?p.wallW:p.wallH)}}});
 }
 
 /* ---------- corner editor ---------- */
@@ -682,8 +687,8 @@ function loadPhoto(file){
 /* ---------- swipe ---------- */
 function cardHTML(a,cls){const p=proj();return `<div class="scard ${cls}" data-id="${a.id}">
   <span class="stamp like">אהבתי</span><span class="stamp nope">לא בשבילי</span>
-  ${S.view==='art'?`<div class="artonly"><div class="aframe" style="aspect-ratio:${a.w}/${a.h}">${svgArt(a)}</div><span class="dims">${D(a.w,a.h)} מ״מ</span></div>`:wallHTML(p,a,null,{fill:true,drag:cls==='front'})}
-  <div class="meta"><div style="min-width:0"><b style="font-weight:500;font-size:18px;display:block">${a.t}</b><span style="font-size:14px;color:var(--n700)">${AR(a).name} · ${D(a.w,a.h)} מ״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
+  ${S.view==='art'?`<div class="artonly"><div class="aframe" style="aspect-ratio:${a.w}/${a.h}">${svgArt(a)}</div><span class="dims">${D(a.w,a.h)} ס״מ</span></div>`:wallHTML(p,a,null,{fill:true,drag:cls==='front'})}
+  <div class="meta"><div style="min-width:0"><b style="font-weight:500;font-size:18px;display:block">${a.t}</b><span style="font-size:14px;color:var(--n700)">${AR(a).name} · ${D(a.w,a.h)} ס״מ</span></div><span style="font-weight:500;color:var(--b800);white-space:nowrap">מ-₪${minPrice(a)}</span></div>
  </div>`}
 function drawDeck(){
   const el=$('#deck');if(!el)return;
@@ -787,7 +792,7 @@ const A={
     b.setAttribute('aria-pressed',k<0);$('#tcount').textContent='נבחרו '+S.taste.length;const n=$('#tnext');n.disabled=S.taste.length<3;n.textContent=S.taste.length>=3?'המשך':'עוד '+(3-S.taste.length)+' לפחות';save()},
   toWall:()=>{const p=proj();if(p)p.seen=[];save();if(stack.includes('swipe')){buildDeck();rejectStreak=0;stack=stack.slice(0,stack.indexOf('swipe')+1);render()}else go('wall')},
   startSwipe:()=>{const ww=$('#ww'),wh=$('#wh');const p=proj();
-    const a=parseInt(ww.value,10),b=parseInt(wh.value,10);if(!(a>=300&&b>=300)){toast('צריך רוחב וגובה במ״מ');return}p.wallW=a;p.wallH=b;save();
+    const a=Math.round(parseFloat(ww.value)*10),b=Math.round(parseFloat(wh.value)*10);if(!(a>=300&&b>=300)){toast('צריך רוחב וגובה בס״מ');return}p.wallW=a;p.wallH=b;save();
     buildDeck();rejectStreak=0;go('swipe')},
   like:()=>decide(true),nope:()=>decide(false),
   undo:()=>{if(!lastAction||di===0){toast('אין מה לבטל');return}const p=proj();const l=lastAction;
