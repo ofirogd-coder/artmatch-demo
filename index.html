@@ -399,7 +399,7 @@ function computeLight(p,done){const src=photos[p.id];if(!src)return;const im=new
   let r=0,g=0,b=0,n=0;for(let yy=Math.floor(v0*H);yy<Math.ceil(v1*H);yy++)for(let xx=Math.floor(u0*W);xx<Math.ceil(u1*W);xx++){const i=(yy*W+xx)*4;r+=d[i];g+=d[i+1];b+=d[i+2];n++}
   if(!n)return;r/=n;g/=n;b/=n;const lum=.2126*r+.7152*g+.0722*b;const m=Math.max(r,g,b)||1;
   p.light={b:Math.min(1.08,Math.max(.55,lum/205)),t:[r,g,b].map(v=>Math.round(v/m*255))};save();done&&done()};im.src=src}
-function sizeRule(p){const z=p.size||{};const auto={minW:Math.round(p.wallW*.12),maxW:Math.round(p.wallW*.9),minH:null,maxH:Math.round(p.wallH*.9)};const r={on:z.on!==false,auto};['minW','maxW','minH','maxH'].forEach(k=>r[k]=(z[k]!==undefined)?z[k]:auto[k]);return r}
+function sizeRule(p){const z=p.size||{};const auto={minW:Math.round(p.wallW*.08),maxW:Math.round(p.wallW*.9),minH:null,maxH:Math.round(p.wallH*.9)};const r={on:z.on!==false,auto};['minW','maxW','minH','maxH'].forEach(k=>r[k]=(z[k]!==undefined)?z[k]:auto[k]);return r}
 function refreshSize(p){const z=sizeRule(p);['minW','maxW','minH','maxH'].forEach(k=>{const el=document.getElementById(k);if(el)el.value=z[k]?CM(z[k]):''})}
 function defCenter(p){return p.center||{u:.5,v:Math.min(.85,Math.max(.15,1-1450/p.wallH))}}
 function getPos(p,id){return (p.pos&&p.pos[id])||defCenter(p)}
@@ -424,16 +424,30 @@ function overlay(html,cls=''){
 function closeOverlay(){const o=$('#ov');if(o)o.remove()}
 
 function buildDeck(){
-  const p=proj();const tasteStyles=S.taste.map(i=>TASTE[i][4]);
+  const p=proj();const F=!S.noFilter;
+  const segs=F?[...new Set([...S.styles,...S.taste.map(i=>TASTE[i][4])])]:[];
   let list=ARTS.filter(a=>!p.seen.includes(a.id)&&(!MUSEUM_READY||a.museum));
-  const F=!S.noFilter;
   if(F&&S.orient==='portrait')list=list.filter(a=>a.h>=a.w);
   if(F&&S.orient==='landscape')list=list.filter(a=>a.w>=a.h);
   if(F&&S.priceOn)list=list.filter(a=>minPrice(a)<=S.priceMax);
+  const beforeSize=list;
   {const z=sizeRule(p);if(F&&z.on)list=list.filter(a=>(!z.minW||a.w>=z.minW)&&(!z.maxW||a.w<=z.maxW)&&(!z.minH||a.h>=z.minH)&&(!z.maxH||a.h<=z.maxH))}
-  list.forEach(a=>{a._s=0;a.st.forEach(s=>{if(F&&S.styles.includes(s))a._s+=3;if(tasteStyles.includes(s))a._s+=2});if(S.mode==='together'&&PL(a))a._s+=1;a._s+=((a.id*7919)%97)/100});
-  list.sort((x,y)=>y._s-x._s);
-  deck=list;di=0;
+  /* chosen segments are a real filter, and every chosen segment gets turns (round robin) */
+  window._missingSegs=[];
+  if(segs.length){
+    const buckets=segs.map(sg=>list.filter(a=>a.st.includes(sg)));
+    window._missingSegs=segs.filter((sg,k)=>!buckets[k].length);
+    window._sizeBlocked=window._missingSegs.filter(sg=>beforeSize.some(a=>a.st.includes(sg)));
+    const rk=a=>((a.id*7919)%97)+(S.mode==='together'&&PL(a)?-30:0);
+    buckets.forEach(b=>b.sort((x,y)=>rk(x)-rk(y)));
+    const out=[],seen=new Set();let more=true,k=0;
+    while(more){more=false;buckets.forEach(b=>{while(k<b.length&&seen.has(b[k].id))b.splice(k,1);if(k<b.length){seen.add(b[k].id);out.push(b[k]);more=true}});k++}
+    list=out;
+  }else{
+    list.forEach(a=>{a._s=((a.id*7919)%97)/100+(S.mode==='together'&&PL(a)?1:0)});
+    list.sort((x,y)=>y._s-x._s);
+  }
+  deck=list;di=0;window._warned=0;
 }
 
 /* ---------- screens ---------- */
@@ -535,7 +549,7 @@ V.wall=()=>{const p=proj();return `${top({right:`<button class="pchip" data-go="
    <div class="row" style="justify-content:space-between"><span><b style="font-weight:500">גודל היצירה שמתאים לקיר</b><div class="sub" style="font-size:13px;margin:2px 0 0">רק יצירות שנכנסות בקיר. מותאם אוטומטית, אפשר לשנות</div></span><button class="switch" role="switch" aria-checked="${z.on}" aria-label="סינון לפי גודל הקיר" data-act="sizeToggle"></button></div>
    <div id="sizebox" ${z.on?'':'hidden'} style="display:flex;flex-direction:column;gap:10px">
     ${[['W','רוחב'],['H','גובה']].map(([k,t])=>`<div class="row2"><div class="field"><label for="min${k}">${t} מינימלי (ס״מ)</label><input id="min${k}" class="input" inputmode="decimal" data-size="min${k}" placeholder="ללא" value="${z['min'+k]?CM(z['min'+k]):''}"></div><div class="field"><label for="max${k}">${t} מקסימלי (ס״מ)</label><input id="max${k}" class="input" inputmode="decimal" data-size="max${k}" placeholder="ללא" value="${z['max'+k]?CM(z['max'+k]):''}"></div></div>`).join('')}
-    <div class="row" style="justify-content:space-between"><span class="note" style="text-align:right">אוטומטי: עד 90% מהקיר, ולפחות 12% מרוחבו</span><button class="link" data-act="sizeAuto">חזרה לאוטומטי</button></div>
+    <div class="row" style="justify-content:space-between"><span class="note" style="text-align:right">אוטומטי: עד 90% מהקיר, ולפחות 8% מרוחבו</span><button class="link" data-act="sizeAuto">חזרה לאוטומטי</button></div>
    </div></div>`})()}
  <div class="grow" style="min-height:16px"></div>
  <button class="btn" data-act="startSwipe">המשך לבחירת יצירות ←</button>`};
@@ -583,10 +597,11 @@ function render(){
   const name=cur();
   if(['wall','swipe','saved','detail'].includes(name)&&!proj()){stack=['projects'];return render()}
   app.innerHTML=`<section class="screen" data-screen="${name}">${V[name]()}</section>`;
-  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 26 · 08.11 14:50</span>');
+  app.insertAdjacentHTML('beforeend','<span class="ver" aria-hidden="true">גרסה 27 · 13.11 14:35</span>');
   bind(app);
   if(name==='swipe')drawDeck();
   const sc=$('.screen');sc.scrollTop=0;fitWalls();bindCorners();bindDrag();moreHint();
+  if(name==='swipe'&&window._missingSegs&&window._missingSegs.length&&!window._warned){window._warned=1;const sb=window._sizeBlocked||[];toast(sb.length?`אין יצירות ${sb.join(', ')} בגודל שמתאים לקיר. אפשר לשנות את גודל היצירה במסך הקיר`:`אין כרגע יצירות ${window._missingSegs.join(', ')} שמתאימות לסינון`)}
   {const q=proj();if(q&&photos[q.id]&&!q.light&&q.photoR)computeLight(q,()=>{if(['swipe','detail'].includes(cur()))render()})}
   const pp=proj();if(name==='wall'&&pp&&photos[pp.id]&&!pp.photoR){const im=new Image();im.onload=()=>{pp.photoR=im.width/im.height;pp.corners=[[.15,.15],[.85,.15],[.85,.85],[.15,.85]];save();render()};im.src=photos[pp.id]}
 }
